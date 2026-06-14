@@ -5,6 +5,7 @@ import { Workshop } from '../models/Workshop.js';
 import { getRedisClient } from '../config/redis.js';
 import { AppError } from '../utils/errors.js';
 import { sendEnrollmentEmail } from '../utils/email.js';
+import { seedDefaultWorkshop } from './workshop.js';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -70,9 +71,9 @@ router.post('/create-checkout-session', async (req: Request, res: Response, next
       return next(new AppError('This registration has already been paid and enrolled.', 400, 'ALREADY_ENROLLED'));
     }
 
-    const workshop = await Workshop.findOne({ workshopId: enquiry.workshopId });
+    let workshop = await Workshop.findOne({ workshopId: enquiry.workshopId });
     if (!workshop) {
-      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
+      workshop = await seedDefaultWorkshop();
     }
 
     const frontendUrl = getFrontendUrl();
@@ -159,9 +160,9 @@ router.post('/create-order', async (req: Request, res: Response, next: NextFunct
       return next(new AppError('This registration has already been paid and enrolled.', 400, 'ALREADY_ENROLLED'));
     }
 
-    const workshop = await Workshop.findOne({ workshopId: enquiry.workshopId });
+    let workshop = await Workshop.findOne({ workshopId: enquiry.workshopId });
     if (!workshop) {
-      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
+      workshop = await seedDefaultWorkshop();
     }
 
     const amountInPaise = workshop.feeINR * 100;

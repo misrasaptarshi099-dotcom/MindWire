@@ -23,7 +23,7 @@ const logger = winston.createLogger({
 const router = Router();
 
 // Helper to seed default workshop data
-const seedDefaultWorkshop = async () => {
+export const seedDefaultWorkshop = async () => {
   logger.info('Ensuring default workshop data exists in MongoDB...');
   return await Workshop.findOneAndUpdate(
     { workshopId: 'AI_ROBOTICS_SUMMER_2026' },

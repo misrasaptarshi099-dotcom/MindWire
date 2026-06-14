@@ -8,6 +8,7 @@ import { rateLimiter } from '../middlewares/rateLimit.js';
 import { getRedisClient } from '../config/redis.js';
 import { sendEnquiryEmail } from '../utils/email.js';
 import { enquirySchema } from '@mindwire/shared';
+import { seedDefaultWorkshop } from './workshop.js';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -74,7 +75,10 @@ router.post(
       }
 
       // 3. Check seats availability
-      const workshop = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
+      let workshop = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
+      if (!workshop) {
+        workshop = await seedDefaultWorkshop();
+      }
       if (workshop && workshop.seatsAvailable <= 0) {
         await redis.del(dupKey); // Release lock so they can try again if seats open
         return next(

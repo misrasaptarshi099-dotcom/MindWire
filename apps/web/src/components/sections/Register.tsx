@@ -46,13 +46,22 @@ export function Register() {
           body: JSON.stringify({ enquiryId }),
         });
 
-        if (checkoutResponse.ok) {
-          const checkoutResult = await checkoutResponse.json();
-          if (checkoutResult.checkoutUrl) {
-            // eslint-disable-next-line react-hooks/immutability
-            window.location.href = checkoutResult.checkoutUrl;
-            return; // Page will redirect
-          }
+        if (!checkoutResponse.ok) {
+          let message = 'Failed to initiate payment redirection';
+          try {
+            const result = await checkoutResponse.json();
+            message = result.message || message;
+          } catch { /* JSON parse failed */ }
+          throw new Error(message);
+        }
+
+        const checkoutResult = await checkoutResponse.json();
+        if (checkoutResult.checkoutUrl) {
+          // eslint-disable-next-line react-hooks/immutability
+          window.location.href = checkoutResult.checkoutUrl;
+          return; // Page will redirect
+        } else {
+          throw new Error('Payment redirection URL was not received.');
         }
       }
 
