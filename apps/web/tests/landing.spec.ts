@@ -1,0 +1,81 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('MindWire Landing Page & Interactive Flows', () => {
+  
+  test('should load the landing page and show the hero section', async ({ page }) => {
+    await page.goto('/');
+    
+    // Check that the title "MindWire" is displayed
+    const heroTitle = page.locator('h1');
+    await expect(heroTitle).toContainText('MindWire');
+    
+    // Check for the "Begin Mission" CTA button
+    const ctaButton = page.locator('button:has-text("Begin Mission")');
+    await expect(ctaButton).toBeVisible();
+  });
+
+  test('should validate the registration form inputs', async ({ page }) => {
+    await page.goto('/');
+    
+    // Scroll to the registration form
+    const registerSection = page.locator('#register');
+    await registerSection.scrollIntoViewIfNeeded();
+    
+    // Click submit without entering details
+    const submitButton = page.locator('button:has-text("Proceed to Payment")');
+    await submitButton.click();
+    
+    // Assert validation errors are visible
+    await expect(page.locator('text=Name must be at least 2 characters.')).toBeVisible();
+    await expect(page.locator('text=Invalid email address.')).toBeVisible();
+    await expect(page.locator('text=Phone number must be a valid 10-digit Indian mobile number.')).toBeVisible();
+  });
+
+  test('should submit the registration form successfully with mocked API', async ({ page }) => {
+    // Intercept API POST request to /api/enquiry
+    await page.route('**/api/enquiry', async (route) => {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          message: 'Enquiry submitted successfully',
+          data: { referenceCode: 'MW-TEST-999' }
+        })
+      });
+    });
+
+    await page.goto('/');
+    
+    // Scroll to form
+    const registerSection = page.locator('#register');
+    await registerSection.scrollIntoViewIfNeeded();
+    
+    // Fill the form
+    await page.fill('input[name="name"]', 'Parent Name');
+    await page.fill('input[name="email"]', 'parent@example.com');
+    await page.fill('input[name="phone"]', '9876543210');
+    await page.fill('input[name="childName"]', 'Kid Name');
+    await page.fill('input[name="childAge"]', '10');
+    
+    // Submit form
+    const submitButton = page.locator('button:has-text("Proceed to Payment")');
+    await submitButton.click();
+    
+    // Verify success message is rendered
+    await expect(page.locator('text=Registration Initiated!')).toBeVisible();
+    await expect(page.locator('text=We\'ve received your details.')).toBeVisible();
+  });
+
+  test('should navigate to the admin login page', async ({ page }) => {
+    await page.goto('/admin/login');
+    
+    // Check that "Admin Access" header is visible
+    const loginHeader = page.locator('h2:has-text("Admin Access")');
+    await expect(loginHeader).toBeVisible();
+    
+    // Check that email and password fields exist
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
+  });
+});

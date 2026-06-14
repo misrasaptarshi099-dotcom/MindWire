@@ -7,11 +7,12 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces",
+    "dev": "concurrently \"npm run dev --workspace=api\" \"npm run dev --workspace=web\"",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
     "tsx": "^4.22.4"
   }
 }
