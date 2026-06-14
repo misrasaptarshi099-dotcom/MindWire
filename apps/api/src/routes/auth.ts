@@ -43,13 +43,13 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
     res.cookie('user_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
     res.cookie('user_logged_in', 'true', {
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
@@ -87,13 +87,13 @@ router.post('/login', rateLimiter(5, 60), validateBody(loginSchema), async (req:
     res.cookie('user_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
     res.cookie('user_logged_in', 'true', {
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
@@ -130,8 +130,12 @@ router.get('/me', protect, async (req: Request, res: Response) => {
 // @desc    Logout user & clear cookies
 // @access  Public
 router.post('/logout', (_req: Request, res: Response) => {
-  res.clearCookie('user_token');
-  res.clearCookie('user_logged_in');
+  const cookieOptions = {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+  };
+  res.clearCookie('user_token', { ...cookieOptions, httpOnly: true });
+  res.clearCookie('user_logged_in', cookieOptions);
   res.status(200).json({
     success: true,
     message: 'Logged out successfully.'
