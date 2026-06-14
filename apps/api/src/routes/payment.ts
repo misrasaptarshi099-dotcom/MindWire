@@ -58,7 +58,12 @@ router.post('/create-order', async (req: Request, res: Response, next: NextFunct
       return next(new AppError('This registration has already been paid and enrolled.', 400, 'ALREADY_ENROLLED'));
     }
 
-    const amountInPaise = 299900; // ₹2,999 represented in paise (smallest unit)
+    const workshop = await Workshop.findOne({ workshopId: enquiry.workshopId });
+    if (!workshop) {
+      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
+    }
+
+    const amountInPaise = workshop.feeINR * 100;
     
     let clientSecret = 'mock_secret_value_for_sandbox';
     let paymentIntentId = 'mock_pi_' + crypto.randomUUID().slice(0, 8);
@@ -152,33 +157,50 @@ router.post('/verify', async (req: Request, res: Response, next: NextFunction) =
       return next(new AppError('Payment has not succeeded yet.', 400, 'PAYMENT_PENDING'));
     }
 
-    // Mark enquiry as enrolled and process seats
-    enquiry.status = 'enrolled';
-    enquiry.payment.status = 'captured';
-    enquiry.payment.paymentId = paymentId;
-    enquiry.payment.capturedAt = new Date();
-    enquiry.enrolledAt = new Date();
-    await enquiry.save();
+    // Mark enquiry as enrolled atomically to prevent race condition between webhook and client
+    const updatedEnquiry = await Enquiry.findOneAndUpdate(
+      { enquiryId, status: { $ne: 'enrolled' } },
+      {
+        $set: {
+          status: 'enrolled',
+          'payment.status': 'captured',
+          'payment.paymentId': paymentId,
+          'payment.capturedAt': new Date(),
+          enrolledAt: new Date(),
+        }
+      },
+      { new: true }
+    );
 
-    // Decrement workshop seats availability
-    const workshop = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
-    if (workshop) {
-      workshop.seatsAvailable = Math.max(0, workshop.seatsAvailable - 1);
-      // Increment enrolled count on the batch matching enquiry
-      const batch = workshop.batches.find((b) => b.batchId === enquiry.batchId);
-      if (batch) {
-        batch.enrolled = batch.enrolled + 1;
+    if (!updatedEnquiry) {
+      // Already enrolled by another process
+      return res.status(200).json({
+        success: true,
+        message: "Payment confirmed! You're enrolled.",
+        receiptUrl: 'https://stripe.com/receipt/mock',
+      });
+    }
+
+    // Decrement workshop seats atomically
+    const workshop = await Workshop.findOneAndUpdate(
+      { workshopId: updatedEnquiry.workshopId, seatsAvailable: { $gt: 0 } },
+      { 
+        $inc: { seatsAvailable: -1, 'batches.$[b].enrolled': 1 } 
+      },
+      {
+        arrayFilters: [{ 'b.batchId': updatedEnquiry.batchId }],
+        new: true
       }
-      await workshop.save();
+    );
 
-      // Invalidate Redis seats cache
+    if (workshop) {
       const redis = getRedisClient();
       await redis.set('workshop:seats', String(workshop.seatsAvailable), 'EX', 60);
       await redis.del('workshop:info');
     }
 
     // Send confirmation email asynchronously
-    sendEnrollmentEmail(enquiry.email, enquiry.name, enquiry.referenceCode, stripe_order_id).catch((err) => {
+    sendEnrollmentEmail(updatedEnquiry.email, updatedEnquiry.name, updatedEnquiry.referenceCode, stripe_order_id).catch((err) => {
       logger.error(`Async enrollment email failed: ${err.message}`);
     });
 
@@ -194,31 +216,40 @@ router.post('/verify', async (req: Request, res: Response, next: NextFunction) =
 
 // Helper for Stripe Webhook enrollment confirmation
 const confirmEnrollment = async (enquiryId: string, paymentId: string) => {
-  const enquiry = await Enquiry.findOne({ enquiryId });
-  if (!enquiry || enquiry.status === 'enrolled') return;
+  const updatedEnquiry = await Enquiry.findOneAndUpdate(
+    { enquiryId, status: { $ne: 'enrolled' } },
+    {
+      $set: {
+        status: 'enrolled',
+        'payment.status': 'captured',
+        'payment.paymentId': paymentId,
+        'payment.capturedAt': new Date(),
+        enrolledAt: new Date(),
+      }
+    },
+    { new: true }
+  );
 
-  enquiry.status = 'enrolled';
-  enquiry.payment.status = 'captured';
-  enquiry.payment.paymentId = paymentId;
-  enquiry.payment.capturedAt = new Date();
-  enquiry.enrolledAt = new Date();
-  await enquiry.save();
+  if (!updatedEnquiry) return;
 
-  const workshop = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
-  if (workshop) {
-    workshop.seatsAvailable = Math.max(0, workshop.seatsAvailable - 1);
-    const batch = workshop.batches.find((b) => b.batchId === enquiry.batchId);
-    if (batch) {
-      batch.enrolled = batch.enrolled + 1;
+  const workshop = await Workshop.findOneAndUpdate(
+    { workshopId: updatedEnquiry.workshopId, seatsAvailable: { $gt: 0 } },
+    { 
+      $inc: { seatsAvailable: -1, 'batches.$[b].enrolled': 1 } 
+    },
+    {
+      arrayFilters: [{ 'b.batchId': updatedEnquiry.batchId }],
+      new: true
     }
-    await workshop.save();
+  );
 
+  if (workshop) {
     const redis = getRedisClient();
     await redis.set('workshop:seats', String(workshop.seatsAvailable), 'EX', 60);
     await redis.del('workshop:info');
   }
 
-  sendEnrollmentEmail(enquiry.email, enquiry.name, enquiry.referenceCode, paymentId).catch((err) => {
+  sendEnrollmentEmail(updatedEnquiry.email, updatedEnquiry.name, updatedEnquiry.referenceCode, paymentId).catch((err) => {
     logger.error(`Webhook async enrollment email failed: ${err.message}`);
   });
 };

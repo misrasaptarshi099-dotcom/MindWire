@@ -24,38 +24,40 @@ const router = Router();
 
 // Helper to seed default workshop data
 const seedDefaultWorkshop = async () => {
-  const existing = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
-  if (existing) return existing;
-
-  logger.info('Seeding default workshop data into MongoDB...');
-  return await Workshop.create({
-    workshopId: 'AI_ROBOTICS_SUMMER_2026',
-    title: 'MindWire AI & Robotics Summer Workshop',
-    subtitle: 'Build. Code. Deploy. Empowering young minds aged 8-14 with hands-on artificial intelligence and robotics.',
-    ageGroup: { min: 8, max: 14 },
-    durationWeeks: 4,
-    mode: 'hybrid',
-    feeINR: 2999,
-    startDate: new Date('2026-07-01T09:00:00.000Z'),
-    endDate: new Date('2026-07-28T17:00:00.000Z'),
-    seatsTotal: 50,
-    seatsAvailable: 42, // Seed some occupied seats to feel authentic
-    status: 'active',
-    batches: [
-      {
-        batchId: 'BATCH_01',
-        name: 'Morning Tech Pioneers (09:00 AM - 12:00 PM)',
-        seats: 25,
-        enrolled: 5,
-      },
-      {
-        batchId: 'BATCH_02',
-        name: 'Afternoon Code Crafters (02:00 PM - 05:00 PM)',
-        seats: 25,
-        enrolled: 3,
-      },
-    ],
-  });
+  logger.info('Ensuring default workshop data exists in MongoDB...');
+  return await Workshop.findOneAndUpdate(
+    { workshopId: 'AI_ROBOTICS_SUMMER_2026' },
+    {
+      $setOnInsert: {
+        title: 'MindWire AI & Robotics Summer Workshop',
+        subtitle: 'Build. Code. Deploy. Empowering young minds aged 8-14 with hands-on artificial intelligence and robotics.',
+        ageGroup: { min: 8, max: 14 },
+        durationWeeks: 4,
+        mode: 'hybrid',
+        feeINR: 2999,
+        startDate: new Date('2026-07-01T09:00:00.000Z'),
+        endDate: new Date('2026-07-28T17:00:00.000Z'),
+        seatsTotal: 50,
+        seatsAvailable: 42,
+        status: 'active',
+        batches: [
+          {
+            batchId: 'BATCH_01',
+            name: 'Morning Tech Pioneers (09:00 AM - 12:00 PM)',
+            seats: 25,
+            enrolled: 5,
+          },
+          {
+            batchId: 'BATCH_02',
+            name: 'Afternoon Code Crafters (02:00 PM - 05:00 PM)',
+            seats: 25,
+            enrolled: 3,
+          },
+        ],
+      }
+    },
+    { upsert: true, new: true }
+  );
 };
 
 // @route   POST /api/workshop/seed

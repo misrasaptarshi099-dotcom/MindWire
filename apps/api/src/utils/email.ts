@@ -27,12 +27,21 @@ if (resendApiKey && !resendApiKey.startsWith('re_YOUR_')) {
   logger.warn('Resend API key is missing or invalid. Emails will be logged to console in mock mode.');
 }
 
+const escapeHtml = (unsafe: string) => {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 export const sendEnquiryEmail = async (email: string, name: string, referenceCode: string) => {
   const subject = 'MindWire AI & Robotics Workshop - Enquiry Received!';
   const html = `
     <div style="font-family: monospace; background-color: #0b0f19; color: #f8fafc; padding: 40px; border-radius: 8px;">
       <h1 style="color: #06b6d4; border-bottom: 2px solid #06b6d4; padding-bottom: 10px;">MINDWIRE // SYSTEM STATUS</h1>
-      <p>Hello ${name},</p>
+      <p>Hello ${escapeHtml(name)},</p>
       <p>We have successfully received your registration enquiry for the <strong>AI & Robotics Summer Workshop 2026</strong>.</p>
       <div style="background-color: #1e293b; padding: 20px; border-left: 4px solid #f59e0b; margin: 20px 0;">
         <strong>Reference Code:</strong> <span style="font-size: 1.2rem; letter-spacing: 2px; color: #f59e0b;">${referenceCode}</span>
@@ -67,7 +76,7 @@ export const sendEnrollmentEmail = async (email: string, name: string, reference
   const html = `
     <div style="font-family: monospace; background-color: #0b0f19; color: #f8fafc; padding: 40px; border-radius: 8px;">
       <h1 style="color: #10b981; border-bottom: 2px solid #10b981; padding-bottom: 10px;">MINDWIRE // ENROLLMENT SECURED</h1>
-      <p>Hello ${name},</p>
+      <p>Hello ${escapeHtml(name)},</p>
       <p>Congratulations! Your payment has been successfully verified, and enrollment is <strong>CONFIRMED</strong> for the <strong>AI & Robotics Summer Workshop 2026</strong>.</p>
       <div style="background-color: #1e293b; padding: 20px; border-left: 4px solid #10b981; margin: 20px 0;">
         <strong>Reference Code:</strong> <span style="font-size: 1.2rem; letter-spacing: 2px; color: #10b981;">${referenceCode}</span><br/>

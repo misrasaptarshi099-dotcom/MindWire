@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import winston from 'winston';
 
-import { handleError } from './utils/errors.js';
+import { AppError, handleError } from './utils/errors.js';
 import authRouter from './routes/auth.js';
 import enquiryRouter from './routes/enquiry.js';
 import paymentRouter from './routes/payment.js';
@@ -28,6 +28,9 @@ const logger = winston.createLogger({
 
 const app: Express = express();
 
+// Trust proxy for secure cookies and rate limiting behind reverse proxies (like Nginx/Load Balancers)
+app.set('trust proxy', 1);
+
 // 1. Security headers via Helmet
 app.use(helmet());
 
@@ -44,7 +47,7 @@ app.use(
         callback(null, true);
       } else {
         logger.warn(`Blocked CORS request from origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
+        callback(new AppError('Not allowed by CORS', 403, 'CORS_ERROR'));
       }
     },
     credentials: true,

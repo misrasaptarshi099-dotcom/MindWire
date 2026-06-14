@@ -18,7 +18,7 @@ const logger = winston.createLogger({
 });
 
 const redisUrl = process.env.REDIS_URL;
-let redis: any;
+let redis: Redis | null = null;
 
 if (redisUrl) {
   try {
@@ -51,7 +51,10 @@ if (redisUrl) {
 const fallbackStore = new Map<string, string>();
 const mockRedis = {
   get: async (key: string) => fallbackStore.get(key) || null,
-  set: async (key: string, value: string, mode?: string, duration?: number) => {
+  set: async (key: string, value: string, mode?: string, duration?: number, flag?: string) => {
+    if (flag === 'NX' && fallbackStore.has(key)) {
+      return null;
+    }
     fallbackStore.set(key, value);
     if (mode === 'EX' && duration) {
       setTimeout(() => fallbackStore.delete(key), duration * 1000);
@@ -78,7 +81,7 @@ const mockRedis = {
   status: 'ready'
 };
 
-export const getRedisClient = () => {
+export const getRedisClient = (): Pick<Redis, 'get' | 'set' | 'del' | 'incr' | 'expire' | 'quit' | 'on' | 'status'> | typeof mockRedis => {
   if (redis && redis.status === 'ready') {
     return redis;
   }

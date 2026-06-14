@@ -21,9 +21,7 @@ const logger = winston.createLogger({
 
 export const rateLimiter = (limit: number, windowSeconds: number) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-    // Clean ip format
-    const ipStr = Array.isArray(ip) ? ip[0] : typeof ip === 'string' ? ip.split(',')[0].trim() : 'unknown';
+    const ipStr = req.ip || 'unknown';
     
     const redis = getRedisClient();
     const key = `ratelimit:${req.originalUrl}:${ipStr}`;

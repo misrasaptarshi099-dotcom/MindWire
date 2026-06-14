@@ -46,6 +46,7 @@ const enquirySchema = new Schema<IEnquiry>(
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
       maxlength: 100,
     },
     email: {
@@ -59,6 +60,7 @@ const enquirySchema = new Schema<IEnquiry>(
       type: String,
       required: true,
       trim: true,
+      match: [/^[6-9]\d{9}$/, 'Please fill a valid phone number'],
     },
     childName: {
       type: String,

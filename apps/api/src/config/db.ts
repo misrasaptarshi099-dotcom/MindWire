@@ -34,6 +34,10 @@ export const connectDB = async (): Promise<void> => {
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     logger.error(`Error connecting to MongoDB: ${(error as Error).message}`);
-    logger.warn('Continuing server execution without active database connection. Queries will fail.');
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    } else {
+      logger.warn('Continuing server execution without active database connection. Queries will fail.');
+    }
   }
 };

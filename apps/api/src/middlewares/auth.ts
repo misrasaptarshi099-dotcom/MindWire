@@ -22,7 +22,10 @@ declare global {
   }
 }
 
-const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key';
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET environment variable is missing.');
+}
 
 export const protect = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   let token: string | undefined;
@@ -51,8 +54,11 @@ export const protect = async (req: Request, _res: Response, next: NextFunction):
     };
     req.token = token;
     next();
-  } catch (error) {
-    return next(new AppError('Invalid or expired authentication token.', 401, 'INVALID_TOKEN'));
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      return next(new AppError('Your token has expired. Please log in again.', 401, 'EXPIRED_TOKEN'));
+    }
+    return next(new AppError('Invalid authentication token.', 401, 'INVALID_TOKEN'));
   }
 };
 

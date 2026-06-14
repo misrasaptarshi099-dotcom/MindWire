@@ -48,24 +48,22 @@ router.post(
     const redis = getRedisClient();
     const dupKey = `enquiry:dup:${email}`;
 
-    try {
-      // 1. Check Redis for duplicate submission lock (24h)
-      const isDuplicate = await redis.get(dupKey);
-      if (isDuplicate) {
-        return next(
-          new AppError(
-            'This email has a pending enquiry already. Please check your email or dashboard.',
-            409,
-            'ALREADY_REGISTERED'
-          )
-        );
-      }
+    // 1. Atomic Redis lock to prevent concurrent duplicate submissions
+    const lockAcquired = await redis.set(dupKey, '1', 'EX', 86400, 'NX');
+    if (!lockAcquired) {
+      return next(
+        new AppError(
+          'This email has a pending enquiry already. Please check your email or dashboard.',
+          409,
+          'ALREADY_REGISTERED'
+        )
+      );
+    }
 
+    try {
       // 2. Check Database for duplicate registration
       const existingEnquiry = await Enquiry.findOne({ email });
       if (existingEnquiry) {
-        // Cache it in Redis to avoid hitting DB next time
-        await redis.set(dupKey, '1', 'EX', 86400);
         return next(
           new AppError(
             'This email is already registered for the workshop.',
@@ -78,6 +76,7 @@ router.post(
       // 3. Check seats availability
       const workshop = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
       if (workshop && workshop.seatsAvailable <= 0) {
+        await redis.del(dupKey); // Release lock so they can try again if seats open
         return next(
           new AppError(
             'The workshop is currently full. You will be placed on the waitlist.',
@@ -89,11 +88,10 @@ router.post(
 
       // 4. Generate unique tokens
       const enquiryId = crypto.randomUUID();
-      const randomSeq = Math.floor(1000 + Math.random() * 9000);
+      const randomSeq = crypto.randomBytes(3).toString('hex').toUpperCase();
       const referenceCode = `MW-2026-${randomSeq}`;
 
-      const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-      const ipAddress = Array.isArray(clientIp) ? clientIp[0] : typeof clientIp === 'string' ? clientIp.split(',')[0].trim() : 'unknown';
+      const clientIp = req.ip || 'unknown';
 
       // 5. Save enquiry in database
       const enquiry = await Enquiry.create({
@@ -106,14 +104,11 @@ router.post(
         childAge,
         message,
         status: 'pending',
-        ipAddress,
+        ipAddress: clientIp,
         userAgent: req.headers['user-agent'] || 'unknown',
       });
 
-      // 6. Set Redis duplicate lock
-      await redis.set(dupKey, '1', 'EX', 86400);
-
-      // 7. Trigger async email confirmation (do not block client response)
+      // 6. Trigger async email confirmation (do not block client response)
       sendEnquiryEmail(email, name, referenceCode).catch((err) => {
         logger.error(`Async welcome email failed: ${err.message}`);
       });
@@ -127,6 +122,7 @@ router.post(
         },
       });
     } catch (error) {
+      await redis.del(dupKey); // Release lock on unexpected failure
       next(error);
     }
   }

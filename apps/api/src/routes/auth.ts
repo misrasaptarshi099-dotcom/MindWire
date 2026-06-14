@@ -7,7 +7,10 @@ import { protect } from '../middlewares/auth.js';
 import { registerSchema, loginSchema } from '@mindwire/shared';
 
 const router = Router();
-const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_key';
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET environment variable is missing.');
+}
 
 const signToken = (userId: string, role: string): string => {
   return jwt.sign({ userId, role }, jwtSecret, {
