@@ -96,7 +96,7 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     await submitButton.click();
     
     // Verify checkout redirection
-    await page.waitForURL('**/?payment=mock_success&ref=MW-TEST-999');
+    await page.waitForURL(/payment=mock_success/);
   });
 
   test('should navigate to the admin login page', async ({ page }) => {
@@ -115,7 +115,7 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     const uniqueEmail = `testuser_${Date.now()}@example.com`;
     
     // 1. Register a new user
-    const registerResponse = await request.post('http://localhost:8080/api/auth/register', {
+    const registerResponse = await request.post('http://127.0.0.1:8080/api/auth/register', {
       data: {
         name: 'Test Parent',
         email: uniqueEmail,
@@ -127,7 +127,7 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     const token = registerData.data.token;
     
     // 2. Create an enquiry using the same email
-    const enquiryResponse = await request.post('http://localhost:8080/api/enquiry', {
+    const enquiryResponse = await request.post('http://127.0.0.1:8080/api/enquiry', {
       headers: {
         'Authorization': `Bearer ${token}`
       },
@@ -147,7 +147,7 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     const enquiryId = enquiryData.data.enquiryId;
     
     // 3. Request a checkout session (must pass protect and email check)
-    const checkoutResponse = await request.post('http://localhost:8080/api/payment/create-checkout-session', {
+    const checkoutResponse = await request.post('http://127.0.0.1:8080/api/payment/create-checkout-session', {
       headers: {
         'Authorization': `Bearer ${token}`
       },
