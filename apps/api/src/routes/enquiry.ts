@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { Enquiry } from '../models/Enquiry.js';
 import { Workshop } from '../models/Workshop.js';
 import { AppError } from '../utils/errors.js';
-import { validateBody, sanitizeInputs } from '../middlewares/validation.js';
+import { validateBody } from '../middlewares/validation.js';
 import { rateLimiter } from '../middlewares/rateLimit.js';
 import { getRedisClient } from '../config/redis.js';
 import { sendEnquiryEmail } from '../utils/email.js';
@@ -34,7 +34,6 @@ const router = Router();
 router.post(
   '/',
   rateLimiter(5, 60), // 5 requests per minute
-  sanitizeInputs,
   validateBody(enquirySchema),
   async (req: Request, res: Response, next: NextFunction) => {
     const { name, email, phone, childName, childAge, message, hp } = req.body;
@@ -64,6 +63,7 @@ router.post(
       // 2. Check Database for duplicate registration
       const existingEnquiry = await Enquiry.findOne({ email });
       if (existingEnquiry) {
+        await redis.del(dupKey); // Release lock — DB already has this record
         return next(
           new AppError(
             'This email is already registered for the workshop.',

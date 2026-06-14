@@ -36,6 +36,14 @@ const escapeHtml = (unsafe: string) => {
     .replace(/'/g, "&#039;");
 };
 
+const maskEmail = (email: string) => {
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+  const [local, domain] = parts;
+  if (local.length <= 2) return `***@${domain}`;
+  return `${local.substring(0, 2)}***@${domain}`;
+};
+
 export const sendEnquiryEmail = async (email: string, name: string, referenceCode: string) => {
   const subject = 'MindWire AI & Robotics Workshop - Enquiry Received!';
   const html = `
@@ -62,7 +70,7 @@ export const sendEnquiryEmail = async (email: string, name: string, referenceCod
         subject,
         html,
       });
-      logger.info(`Enquiry confirmation email sent successfully to ${email}`);
+      logger.info(`Enquiry confirmation email sent successfully to ${maskEmail(email)}`);
     } catch (error) {
       logger.error(`Failed to send enquiry email via Resend: ${(error as Error).message}`);
     }
@@ -97,7 +105,7 @@ export const sendEnrollmentEmail = async (email: string, name: string, reference
         subject,
         html,
       });
-      logger.info(`Enrollment confirmation email sent successfully to ${email}`);
+      logger.info(`Enrollment confirmation email sent successfully to ${maskEmail(email)}`);
     } catch (error) {
       logger.error(`Failed to send enrollment email via Resend: ${(error as Error).message}`);
     }

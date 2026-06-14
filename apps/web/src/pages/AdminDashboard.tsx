@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, Users, CheckCircle, CreditCard, Clock } from 'lucide-react';
+import { WORKSHOP_PRICE } from '@mindwire/shared';
 
 interface Enquiry {
   _id: string;
@@ -22,7 +23,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     const fetchEnquiries = async () => {
-      const token = localStorage.getItem('admin_token');
+      const token = sessionStorage.getItem('admin_token');
       if (!token) {
         navigate('/admin/login');
         return;
@@ -50,7 +51,7 @@ export function AdminDashboard() {
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token');
     navigate('/admin/login');
   };
 
@@ -100,7 +101,7 @@ export function AdminDashboard() {
               <Users className="w-16 h-16" />
             </div>
             <div className="text-muted-foreground text-sm font-medium mb-2">Revenue Potential</div>
-            <div className="text-3xl font-bold text-primary">₹{(enquiries.filter(e => e.status === 'enrolled').length * 2999).toLocaleString()}</div>
+            <div className="text-3xl font-bold text-primary">₹{(enquiries.filter(e => e.status === 'enrolled').length * WORKSHOP_PRICE).toLocaleString()}</div>
           </div>
         </div>
 

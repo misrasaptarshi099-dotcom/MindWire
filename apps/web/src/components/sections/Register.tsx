@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { enquirySchema } from '@mindwire/shared';
+import { enquirySchema, WORKSHOP_PRICE } from '@mindwire/shared';
+import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
@@ -14,21 +15,26 @@ export function Register() {
     defaultValues: { hp: '' }
   });
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: z.infer<typeof enquirySchema>) => {
     setStatus('loading');
     setErrorMessage('');
     
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + '/enquiry', {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      if (!apiUrl) {
+        throw new Error('API URL is not configured. Please set VITE_API_URL.');
+      }
+
+      const response = await fetch(apiUrl + '/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       
-      const result = await response.json();
-      
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to submit enquiry');
+        let message = 'Failed to submit enquiry';
+        try { const result = await response.json(); message = result.message || message; } catch {}
+        throw new Error(message);
       }
       
       setStatus('success');
@@ -123,7 +129,8 @@ export function Register() {
               <label className="block text-sm font-medium mb-1.5 text-muted-foreground">Child's Age</label>
               <input 
                 {...register("childAge")}
-                type="number"
+                type="text"
+                inputMode="numeric"
                 className={`w-full bg-background border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors ${errors.childAge ? 'border-red-500' : 'border-border'}`}
                 placeholder="8-14"
               />
@@ -142,7 +149,7 @@ export function Register() {
             disabled={status === 'loading'}
             className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-lg hover:bg-primary/90 transition-all flex justify-center items-center gap-2 mt-4"
           >
-            {status === 'loading' ? <Loader2 className="animate-spin w-5 h-5" /> : 'Proceed to Payment — ₹2,999'}
+            {status === 'loading' ? <Loader2 className="animate-spin w-5 h-5" /> : `Proceed to Payment — ₹${WORKSHOP_PRICE.toLocaleString()}`}
           </button>
         </form>
       </div>

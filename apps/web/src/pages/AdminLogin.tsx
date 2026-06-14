@@ -20,20 +20,31 @@ export function AdminLogin() {
     setErrorMessage('');
     
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + '/auth/login', {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      if (!apiUrl) {
+        throw new Error('API URL is not configured. Please set VITE_API_URL.');
+      }
+
+      const response = await fetch(apiUrl + '/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       
-      const result = await response.json();
-      
       if (!response.ok) {
-        throw new Error(result.message || 'Login failed');
+        let message = 'Login failed';
+        try { const result = await response.json(); message = result.message || message; } catch {}
+        throw new Error(message);
+      }
+
+      const result = await response.json();
+      const token = result.data?.token;
+      if (!token) {
+        throw new Error('Authentication succeeded but no token was received.');
       }
       
       // Store token
-      localStorage.setItem('admin_token', result.data.token);
+      sessionStorage.setItem('admin_token', token);
       navigate('/admin/dashboard');
     } catch (err: any) {
       setStatus('error');

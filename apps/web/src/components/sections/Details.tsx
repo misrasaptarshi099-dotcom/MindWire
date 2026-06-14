@@ -41,7 +41,10 @@ export function Details() {
           </div>
           
           <div className="mt-12 pt-8 border-t border-border flex justify-center">
-            <button className="px-8 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+            <button 
+              onClick={() => document.getElementById('register')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-8 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)]"
+            >
               Secure a Slot
             </button>
           </div>

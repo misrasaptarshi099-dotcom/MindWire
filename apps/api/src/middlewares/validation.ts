@@ -20,19 +20,3 @@ export const validateBody = (schema: ZodSchema) => {
     }
   };
 };
-
-import xss from 'xss';
-
-export const sanitizeInputs = (req: Request, _res: Response, next: NextFunction): void => {
-  // Safe HTML sanitization for string fields to prevent XSS
-  if (req.body && typeof req.body === 'object') {
-    for (const key of Object.keys(req.body)) {
-      if (typeof req.body[key] === 'string') {
-        let val = req.body[key].trim();
-        val = xss(val);
-        req.body[key] = val;
-      }
-    }
-  }
-  next();
-};

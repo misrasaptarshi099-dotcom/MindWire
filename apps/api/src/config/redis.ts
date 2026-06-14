@@ -49,19 +49,37 @@ if (redisUrl) {
 
 // Minimal in-memory store fallback for Redis if connection fails or is missing
 const fallbackStore = new Map<string, string>();
+const timeoutStore = new Map<string, NodeJS.Timeout>();
 const mockRedis = {
   get: async (key: string) => fallbackStore.get(key) || null,
-  set: async (key: string, value: string, mode?: string, duration?: number, flag?: string) => {
-    if (flag === 'NX' && fallbackStore.has(key)) {
+  set: async (key: string, value: string, ...args: (string | number)[]) => {
+    const upperArgs = args.map(a => typeof a === 'string' ? a.toUpperCase() : a);
+    const hasNX = upperArgs.includes('NX');
+    if (hasNX && fallbackStore.has(key)) {
       return null;
     }
     fallbackStore.set(key, value);
-    if (mode === 'EX' && duration) {
-      setTimeout(() => fallbackStore.delete(key), duration * 1000);
+    const exIndex = upperArgs.indexOf('EX');
+    if (exIndex !== -1) {
+      const ttl = Number(upperArgs[exIndex + 1]);
+      if (ttl > 0) {
+        if (timeoutStore.has(key)) {
+          clearTimeout(timeoutStore.get(key));
+        }
+        const t = setTimeout(() => {
+          fallbackStore.delete(key);
+          timeoutStore.delete(key);
+        }, ttl * 1000);
+        timeoutStore.set(key, t);
+      }
     }
     return 'OK';
   },
   del: async (key: string) => {
+    if (timeoutStore.has(key)) {
+      clearTimeout(timeoutStore.get(key));
+      timeoutStore.delete(key);
+    }
     return fallbackStore.delete(key) ? 1 : 0;
   },
   incr: async (key: string) => {
@@ -71,7 +89,14 @@ const mockRedis = {
   },
   expire: async (key: string, seconds: number) => {
     if (fallbackStore.has(key)) {
-      setTimeout(() => fallbackStore.delete(key), seconds * 1000);
+      if (timeoutStore.has(key)) {
+        clearTimeout(timeoutStore.get(key));
+      }
+      const t = setTimeout(() => {
+        fallbackStore.delete(key);
+        timeoutStore.delete(key);
+      }, seconds * 1000);
+      timeoutStore.set(key, t);
       return 1;
     }
     return 0;
