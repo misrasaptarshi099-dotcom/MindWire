@@ -6,6 +6,7 @@ import { validateBody } from '../middlewares/validation.js';
 import { rateLimiter } from '../middlewares/rateLimit.js';
 import { protect } from '../middlewares/auth.js';
 import { registerSchema, loginSchema } from '@mindwire/shared';
+import { sendAccountCreatedEmail } from '../utils/email.js';
 
 const router = Router();
 const jwtSecret = process.env.JWT_SECRET;
@@ -37,6 +38,8 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
       password,
       role: 'user', // Default role
     });
+
+    sendAccountCreatedEmail(user.email, user.name).catch(err => console.error(err));
 
     const token = signToken(user._id.toString(), user.role);
 
