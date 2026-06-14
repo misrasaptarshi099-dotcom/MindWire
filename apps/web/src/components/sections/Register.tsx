@@ -20,10 +20,7 @@ export function Register() {
     setErrorMessage('');
     
     try {
-      const apiUrl = import.meta.env.VITE_API_URL;
-      if (!apiUrl) {
-        throw new Error('API URL is not configured. Please set VITE_API_URL.');
-      }
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
 
       const response = await fetch(apiUrl + '/enquiry', {
         method: 'POST',
