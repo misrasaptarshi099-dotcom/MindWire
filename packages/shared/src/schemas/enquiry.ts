@@ -47,9 +47,11 @@ export const enquirySchema = z.object({
     .or(z.literal('')),
   workshopId: z
     .string()
+    .min(1, { message: 'workshopId cannot be empty.' })
     .optional(),
   batchId: z
     .string()
+    .min(1, { message: 'batchId cannot be empty.' })
     .optional(),
 });
 

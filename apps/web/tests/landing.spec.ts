@@ -61,7 +61,19 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
         body: JSON.stringify({
           success: true,
           message: 'Enquiry submitted successfully',
-          data: { referenceCode: 'MW-TEST-999' }
+          data: { enquiryId: 'mock-enquiry-123', referenceCode: 'MW-TEST-999' }
+        })
+      });
+    });
+
+    // Intercept API POST request to /api/payment/create-checkout-session
+    await page.route('**/api/payment/create-checkout-session', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          checkoutUrl: '#mock-checkout',
         })
       });
     });
@@ -83,9 +95,8 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     const submitButton = page.locator('button:has-text("Proceed to Payment")');
     await submitButton.click();
     
-    // Verify success message is rendered
-    await expect(page.locator('text=Registration Initiated!')).toBeVisible();
-    await expect(page.locator('text=We\'ve received your details.')).toBeVisible();
+    // Verify checkout redirection
+    await page.waitForURL('**/#mock-checkout');
   });
 
   test('should navigate to the admin login page', async ({ page }) => {

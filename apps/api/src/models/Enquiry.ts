@@ -24,6 +24,7 @@ export interface IEnquiry extends Document {
   userAgent?: string;
   source?: 'organic' | 'paid' | 'referral';
   utmParams?: Record<string, any>;
+  feeINR?: number;
   createdAt: Date;
   updatedAt: Date;
   enrolledAt?: Date;
@@ -116,6 +117,9 @@ const enquirySchema = new Schema<IEnquiry>(
     },
     utmParams: {
       type: Schema.Types.Mixed,
+    },
+    feeINR: {
+      type: Number,
     },
     enrolledAt: {
       type: Date,

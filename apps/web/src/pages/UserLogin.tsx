@@ -5,11 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginInput } from '@mindwire/shared';
 import { motion } from 'framer-motion';
 import { Loader2, KeyRound } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export function UserLogin() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   
   const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -33,6 +35,11 @@ export function UserLogin() {
         let message = 'Login failed';
         try { const result = await response.json(); message = result.message || message; } catch { /* JSON parse failed */ }
         throw new Error(message);
+      }
+
+      const result = await response.json();
+      if (result.success && result.data?.user) {
+        setUser(result.data.user);
       }
 
       navigate('/dashboard');

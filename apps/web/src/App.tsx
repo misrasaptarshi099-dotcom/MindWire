@@ -7,6 +7,7 @@ import { UserDashboard } from './pages/UserDashboard';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Navbar } from './components/layout/Navbar';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import type { ReactNode } from 'react';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -18,8 +19,13 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function UserProtectedRoute({ children }: { children: ReactNode }) {
-  const isLoggedIn = document.cookie.split(';').some(item => item.trim().startsWith('user_logged_in='));
-  if (!isLoggedIn) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+  
+  if (!user || user.role !== 'user') {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
@@ -27,9 +33,10 @@ function UserProtectedRoute({ children }: { children: ReactNode }) {
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        <Navbar />
+    <AuthProvider>
+      <BrowserRouter>
+        <div className="min-h-screen bg-background text-foreground flex flex-col">
+          <Navbar />
         <div className="flex-grow">
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -55,6 +62,7 @@ function App() {
         </div>
       </div>
     </BrowserRouter>
+  </AuthProvider>
   );
 }
 

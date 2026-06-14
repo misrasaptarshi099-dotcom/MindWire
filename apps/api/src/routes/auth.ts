@@ -63,6 +63,7 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
           email: user.email,
           role: user.role,
         },
+        token,
       },
     });
   } catch (error) {
@@ -107,6 +108,7 @@ router.post('/login', rateLimiter(5, 60), validateBody(loginSchema), async (req:
           email: user.email,
           role: user.role,
         },
+        token,
       },
     });
   } catch (error) {

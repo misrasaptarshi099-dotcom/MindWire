@@ -79,17 +79,29 @@ router.post(
       // 3. Resolve the actual workshop and check seats availability
       let workshop = await Workshop.findOne({ workshopId: targetWorkshopId });
       if (!workshop) {
-        workshop = await seedDefaultWorkshop();
+        if (!workshopId) {
+          workshop = await seedDefaultWorkshop();
+        }
       }
 
       if (!workshop) {
         await redis.del(dupKey);
-        return next(new AppError('Workshop configuration not found.', 500, 'SERVER_ERROR'));
+        return next(new AppError('Workshop configuration not found.', 404, 'NOT_FOUND'));
       }
 
       const resolvedWorkshopId = workshop.workshopId;
-      const isBatchValid = workshop.batches && workshop.batches.some(b => b.batchId === batchId);
-      const targetBatchId = isBatchValid && batchId ? batchId : (workshop.batches[0]?.batchId || 'BATCH_01');
+      
+      let targetBatchId = 'BATCH_01';
+      if (batchId) {
+        const isBatchValid = workshop.batches && workshop.batches.some(b => b.batchId === batchId);
+        if (!isBatchValid) {
+          await redis.del(dupKey);
+          return next(new AppError('Invalid batch ID provided.', 400, 'VALIDATION_ERROR'));
+        }
+        targetBatchId = batchId;
+      } else {
+        targetBatchId = workshop.batches?.[0]?.batchId || 'BATCH_01';
+      }
 
       if (workshop.seatsAvailable <= 0) {
         await redis.del(dupKey); // Release lock so they can try again if seats open
@@ -122,6 +134,7 @@ router.post(
         status: 'pending',
         workshopId: resolvedWorkshopId,
         batchId: targetBatchId,
+        feeINR: workshop.feeINR,
         ipAddress: clientIp,
         userAgent: req.headers['user-agent'] || 'unknown',
       });

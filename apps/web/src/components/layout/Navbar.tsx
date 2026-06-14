@@ -2,14 +2,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, LogOut, LayoutDashboard, Shield } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Sync token state dynamically during render
-  const isLoggedIn = document.cookie.split(';').some(item => item.trim().startsWith('user_logged_in='));
+  const { user, setUser } = useAuth();
+  const isLoggedIn = user?.role === 'user';
   const adminToken = sessionStorage.getItem('admin_token');
 
   const handleLogout = async () => {
@@ -19,7 +20,7 @@ export function Navbar() {
     } catch (err) {
       console.error('Logout request failed:', err);
     }
-    document.cookie = 'user_logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    setUser(null);
     sessionStorage.removeItem('admin_token');
     setIsOpen(false);
     navigate('/');

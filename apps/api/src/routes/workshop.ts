@@ -170,7 +170,7 @@ router.post('/', protect, restrictTo('admin'), async (req: Request, res: Respons
   try {
     // Basic verification of required fields
     const { workshopId, title, subtitle, ageGroup, durationWeeks, mode, feeINR, startDate, endDate, seatsTotal } = req.body;
-    if (!workshopId || !title || !subtitle || !ageGroup || !durationWeeks || !mode || !feeINR || !startDate || !endDate || !seatsTotal) {
+    if (!workshopId || !title || !subtitle || !ageGroup || !durationWeeks || !mode || feeINR == null || !startDate || !endDate || !seatsTotal) {
       return next(new AppError('All required fields must be provided.', 400, 'VALIDATION_ERROR'));
     }
 
@@ -220,14 +220,26 @@ router.post('/', protect, restrictTo('admin'), async (req: Request, res: Respons
 router.put('/:workshopId', protect, restrictTo('admin'), async (req: Request, res: Response, next: NextFunction) => {
   const { workshopId } = req.params;
   try {
+    const existingWorkshop = await Workshop.findOne({ workshopId });
+    if (!existingWorkshop) {
+      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
+    }
+
+    const newSeatsTotal = req.body.seatsTotal !== undefined ? Number(req.body.seatsTotal) : existingWorkshop.seatsTotal;
+    const newBatches = req.body.batches !== undefined ? req.body.batches : existingWorkshop.batches;
+
+    if (req.body.seatsTotal !== undefined || req.body.batches !== undefined) {
+      const calculatedTotal = newBatches.reduce((acc: number, b: any) => acc + (Number(b.seats) || 0), 0);
+      if (calculatedTotal !== newSeatsTotal) {
+        return next(new AppError(`Total batch seats (${calculatedTotal}) must match workshop seatsTotal (${newSeatsTotal}). Please update batch capacities accordingly.`, 400, 'VALIDATION_ERROR'));
+      }
+    }
+
     const workshop = await Workshop.findOneAndUpdate(
       { workshopId },
       req.body,
       { new: true, runValidators: true }
     );
-    if (!workshop) {
-      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
-    }
 
     // Invalidate Redis caches
     const redis = getRedisClient();
@@ -249,6 +261,10 @@ router.put('/:workshopId', protect, restrictTo('admin'), async (req: Request, re
 router.delete('/:workshopId', protect, restrictTo('admin'), async (req: Request, res: Response, next: NextFunction) => {
   const { workshopId } = req.params;
   try {
+    if (workshopId === 'AI_ROBOTICS_SUMMER_2026') {
+      return next(new AppError('Cannot delete the seeded default workshop.', 400, 'VALIDATION_ERROR'));
+    }
+
     const workshop = await Workshop.findOneAndDelete({ workshopId });
     if (!workshop) {
       return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
