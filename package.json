@@ -10,5 +10,8 @@
     "dev": "npm run dev --workspaces",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
   }
 }
