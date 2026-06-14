@@ -33,7 +33,7 @@ export function AdminLogin() {
       
       if (!response.ok) {
         let message = 'Login failed';
-        try { const result = await response.json(); message = result.message || message; } catch {}
+        try { const result = await response.json(); message = result.message || message; } catch { /* JSON parse failed */ }
         throw new Error(message);
       }
 
@@ -46,9 +46,9 @@ export function AdminLogin() {
       // Store token
       sessionStorage.setItem('admin_token', token);
       navigate('/admin/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus('error');
-      setErrorMessage(err.message || 'Invalid credentials');
+      setErrorMessage(err instanceof Error ? err.message : 'Invalid credentials');
     }
   };
 

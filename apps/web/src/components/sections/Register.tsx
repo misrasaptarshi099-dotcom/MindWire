@@ -33,15 +33,15 @@ export function Register() {
       
       if (!response.ok) {
         let message = 'Failed to submit enquiry';
-        try { const result = await response.json(); message = result.message || message; } catch {}
+        try { const result = await response.json(); message = result.message || message; } catch { /* JSON parse failed */ }
         throw new Error(message);
       }
       
       setStatus('success');
       // In a full integration, here we would redirect to a payment checkout session
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus('error');
-      setErrorMessage(err.message || 'Something went wrong. Please try again.');
+      setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
   };
 

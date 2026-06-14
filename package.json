@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=@mindwire/shared\" \"npm run dev --workspace=api\" \"npm run dev --workspace=web\"",
     "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces"
+    "lint": "npm run lint --workspace=web"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
