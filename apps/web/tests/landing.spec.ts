@@ -32,6 +32,27 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
   });
 
   test('should submit the registration form successfully with mocked API', async ({ page }) => {
+    // Intercept API GET request to /api/workshop
+    await page.route('**/api/workshop', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: [{
+            workshopId: 'AI_ROBOTICS_SUMMER_2026',
+            title: 'Mock Workshop',
+            feeINR: 4999,
+            ageGroup: { min: 8, max: 14 },
+            durationWeeks: 4,
+            mode: 'online',
+            startDate: new Date().toISOString(),
+            batches: [{ batchId: 'b-1', name: 'Batch 1' }]
+          }]
+        })
+      });
+    });
+
     // Intercept API POST request to /api/enquiry
     await page.route('**/api/enquiry', async (route) => {
       await route.fulfill({
