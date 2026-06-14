@@ -30,6 +30,7 @@ export const connectDB = async (): Promise<void> => {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      family: 4, // Force IPv4 to bypass Node 18+ DNS resolution issues on Windows
     });
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
@@ -37,7 +38,8 @@ export const connectDB = async (): Promise<void> => {
     if (process.env.NODE_ENV === 'production') {
       process.exit(1);
     } else {
-      logger.warn('Continuing server execution without active database connection. Queries will fail.');
+      logger.error('Halting server execution due to missing database connection.');
+      process.exit(1);
     }
   }
 };

@@ -22,7 +22,8 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.1",
     "zod": "^4.4.3",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "@mindwire/shared": "*"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

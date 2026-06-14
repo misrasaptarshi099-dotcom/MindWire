@@ -1,3 +1,7 @@
+import dns from 'node:dns';
+// Force Google DNS — fixes "querySrv ECONNREFUSED" on ISPs that block SRV lookups
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+
 import './config/env.js';
 import winston from 'winston';
 
