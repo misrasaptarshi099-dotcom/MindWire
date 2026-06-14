@@ -47,7 +47,8 @@ router.post(
     }
 
     const redis = getRedisClient();
-    const dupKey = `enquiry:dup:${email}`;
+    const targetWorkshopId = workshopId || 'AI_ROBOTICS_SUMMER_2026';
+    const dupKey = `enquiry:dup:${email}:${targetWorkshopId}`;
 
     // 1. Atomic Redis lock to prevent concurrent duplicate submissions
     const lockAcquired = await redis.set(dupKey, '1', 'EX', 86400, 'NX');
@@ -63,7 +64,7 @@ router.post(
 
     try {
       // 2. Check Database for duplicate registration
-      const existingEnquiry = await Enquiry.findOne({ email });
+      const existingEnquiry = await Enquiry.findOne({ email, workshopId: targetWorkshopId });
       if (existingEnquiry) {
         await redis.del(dupKey); // Release lock — DB already has this record
         return next(
@@ -75,15 +76,22 @@ router.post(
         );
       }
 
-      const targetWorkshopId = workshopId || 'AI_ROBOTICS_SUMMER_2026';
-      const targetBatchId = batchId || 'BATCH_01';
-
-      // 3. Check seats availability
+      // 3. Resolve the actual workshop and check seats availability
       let workshop = await Workshop.findOne({ workshopId: targetWorkshopId });
       if (!workshop) {
         workshop = await seedDefaultWorkshop();
       }
-      if (workshop && workshop.seatsAvailable <= 0) {
+
+      if (!workshop) {
+        await redis.del(dupKey);
+        return next(new AppError('Workshop configuration not found.', 500, 'SERVER_ERROR'));
+      }
+
+      const resolvedWorkshopId = workshop.workshopId;
+      const isBatchValid = workshop.batches && workshop.batches.some(b => b.batchId === batchId);
+      const targetBatchId = isBatchValid && batchId ? batchId : (workshop.batches[0]?.batchId || 'BATCH_01');
+
+      if (workshop.seatsAvailable <= 0) {
         await redis.del(dupKey); // Release lock so they can try again if seats open
         return next(
           new AppError(
@@ -112,7 +120,7 @@ router.post(
         childAge,
         message,
         status: 'pending',
-        workshopId: targetWorkshopId,
+        workshopId: resolvedWorkshopId,
         batchId: targetBatchId,
         ipAddress: clientIp,
         userAgent: req.headers['user-agent'] || 'unknown',

@@ -50,8 +50,8 @@ export function UserDashboard() {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      const token = localStorage.getItem('user_token');
-      if (!token) {
+      const isLoggedIn = document.cookie.split(';').some(item => item.trim().startsWith('user_logged_in='));
+      if (!isLoggedIn) {
         navigate('/login');
         return;
       }
@@ -61,7 +61,7 @@ export function UserDashboard() {
         
         // 1. Fetch Profile
         const profileRes = await fetch(`${apiUrl}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         });
         
         if (!profileRes.ok) {
@@ -73,17 +73,21 @@ export function UserDashboard() {
 
         // 2. Fetch Enrollments
         const enrollmentsRes = await fetch(`${apiUrl}/enquiry/user/me`, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         });
 
         if (enrollmentsRes.ok) {
           const enrollmentsData = await enrollmentsRes.json();
           setRegistrations(enrollmentsData.data || []);
+        } else {
+          const errData = await enrollmentsRes.json().catch(() => ({}));
+          throw new Error(errData.message || 'Failed to retrieve registrations.');
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(err);
-        setError('Session expired or authentication failed. Please log in again.');
-        localStorage.removeItem('user_token');
+        const message = err instanceof Error ? err.message : 'Session expired or authentication failed. Please log in again.';
+        setError(message);
+        document.cookie = 'user_logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         setTimeout(() => navigate('/login'), 2000);
       } finally {
         setLoading(false);
@@ -323,6 +327,7 @@ export function UserDashboard() {
                           const res = await fetch(`${apiUrl}/payment/create-checkout-session`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
                             body: JSON.stringify({ enquiryId: reg.enquiryId })
                           });
                           if (res.ok) {

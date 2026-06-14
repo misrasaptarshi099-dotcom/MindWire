@@ -154,13 +154,6 @@ router.get('/seats', async (_req: Request, res: Response, next: NextFunction) =>
 router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const workshops = await Workshop.find({}).sort({ startDate: 1 });
-    if (workshops.length === 0) {
-      const defaultWorkshop = await seedDefaultWorkshop();
-      return res.status(200).json({
-        success: true,
-        data: [defaultWorkshop],
-      });
-    }
     res.status(200).json({
       success: true,
       data: workshops,
@@ -207,6 +200,11 @@ router.post('/', protect, restrictTo('admin'), async (req: Request, res: Respons
       batches,
     });
 
+    // Invalidate Redis caches
+    const redis = getRedisClient();
+    await redis.del('workshop:info');
+    await redis.del('workshop:seats');
+
     res.status(201).json({
       success: true,
       data: workshop,
@@ -230,6 +228,12 @@ router.put('/:workshopId', protect, restrictTo('admin'), async (req: Request, re
     if (!workshop) {
       return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
     }
+
+    // Invalidate Redis caches
+    const redis = getRedisClient();
+    await redis.del('workshop:info');
+    await redis.del('workshop:seats');
+
     res.status(200).json({
       success: true,
       data: workshop,
@@ -249,6 +253,12 @@ router.delete('/:workshopId', protect, restrictTo('admin'), async (req: Request,
     if (!workshop) {
       return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
     }
+
+    // Invalidate Redis caches
+    const redis = getRedisClient();
+    await redis.del('workshop:info');
+    await redis.del('workshop:seats');
+
     res.status(200).json({
       success: true,
       message: 'Workshop deleted successfully.',

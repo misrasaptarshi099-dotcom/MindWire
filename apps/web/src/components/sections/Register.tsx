@@ -18,21 +18,31 @@ export function Register({ workshop }: RegisterProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof enquirySchema>>({
     resolver: zodResolver(enquirySchema),
-    defaultValues: { hp: '', batchId: '' } as unknown as undefined
+    defaultValues: { hp: '', batchId: '' } as Partial<z.input<typeof enquirySchema>>
   });
 
-  const onSubmit = async (data: z.infer<typeof enquirySchema> & { batchId?: string }) => {
+  const onSubmit = async (data: z.input<typeof enquirySchema>) => {
     setStatus('loading');
     setErrorMessage('');
     
     try {
+      // Validate that a valid batch is actually available before constructing payload
+      if (!workshop?.batches || workshop.batches.length === 0) {
+        throw new Error('No batches are currently available for this workshop.');
+      }
+
+      const selectedBatchId = data.batchId || workshop.batches[0].batchId;
+      if (!selectedBatchId) {
+        throw new Error('Please select a valid batch.');
+      }
+
       const apiUrl = import.meta.env.VITE_API_URL || '/api';
       const payload = {
         ...data,
-        workshopId: workshop?.workshopId || 'AI_ROBOTICS_SUMMER_2026',
-        batchId: data.batchId || workshop?.batches[0]?.batchId || 'BATCH_01'
+        workshopId: workshop.workshopId,
+        batchId: selectedBatchId
       };
 
       // Step 1: Submit the enquiry
@@ -184,6 +194,7 @@ export function Register({ workshop }: RegisterProps) {
               <label className="block text-sm font-medium mb-1.5 text-muted-foreground">Select Batch *</label>
               <select 
                 {...register("batchId")}
+                defaultValue={workshop.batches[0]?.batchId}
                 className="w-full bg-background border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
               >
                 {workshop.batches.map((b) => (

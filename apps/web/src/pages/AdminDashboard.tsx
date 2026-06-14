@@ -83,13 +83,21 @@ export function AdminDashboard() {
       const enqRes = await fetch(`${apiUrl}/enquiry`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!enqRes.ok) throw new Error('Failed to retrieve registration data.');
+      if (!enqRes.ok) {
+        const error = new Error('Failed to retrieve registration data.') as Error & { status?: number };
+        error.status = enqRes.status;
+        throw error;
+      }
       const enqData = await enqRes.json();
       setEnquiries(enqData.data || []);
 
       // 2. Fetch workshops
       const wsRes = await fetch(`${apiUrl}/workshop`);
-      if (!wsRes.ok) throw new Error('Failed to retrieve workshops data.');
+      if (!wsRes.ok) {
+        const error = new Error('Failed to retrieve workshops data.') as Error & { status?: number };
+        error.status = wsRes.status;
+        throw error;
+      }
       const wsData = await wsRes.json();
       setWorkshops(wsData.data || []);
 
@@ -98,8 +106,12 @@ export function AdminDashboard() {
       console.error(err);
       const message = err instanceof Error ? err.message : 'Authentication failed. Please log in again.';
       setError(message);
-      sessionStorage.removeItem('admin_token');
-      setTimeout(() => navigate('/admin/login'), 2000);
+      
+      const status = (err as { status?: number })?.status;
+      if (status === 401 || status === 403) {
+        sessionStorage.removeItem('admin_token');
+        setTimeout(() => navigate('/admin/login'), 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -181,6 +193,15 @@ export function AdminDashboard() {
 
   const handleSubmitWorkshop = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (editingWorkshop) {
+      const currentEnrollment = editingWorkshop.seatsTotal - editingWorkshop.seatsAvailable;
+      if (seats < currentEnrollment) {
+        alert(`Cannot update seats. The new seats total (${seats}) is less than the current enrollment count (${currentEnrollment}).`);
+        return;
+      }
+    }
+
     const token = sessionStorage.getItem('admin_token');
     
     const payload = {
@@ -273,7 +294,11 @@ export function AdminDashboard() {
           <div className="glass p-6 rounded-xl border border-border relative overflow-hidden">
             <div className="text-muted-foreground text-sm font-medium mb-2 font-mono">Collected Revenue</div>
             <div className="text-3xl font-bold text-primary">
-              ₹{enquiries.filter(e => e.status === 'enrolled').reduce((acc, curr) => acc + (curr.status === 'enrolled' ? 2999 : 0), 0).toLocaleString()}
+              ₹{enquiries.filter(e => e.status === 'enrolled').reduce((acc, curr) => {
+                const workshop = workshops.find(w => w.workshopId === curr.workshopId);
+                const fee = workshop ? workshop.feeINR : 2999;
+                return acc + fee;
+              }, 0).toLocaleString()}
             </div>
           </div>
         </div>

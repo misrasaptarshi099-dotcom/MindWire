@@ -18,8 +18,8 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function UserProtectedRoute({ children }: { children: ReactNode }) {
-  const token = localStorage.getItem('user_token');
-  if (!token) {
+  const isLoggedIn = document.cookie.split(';').some(item => item.trim().startsWith('user_logged_in='));
+  if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;

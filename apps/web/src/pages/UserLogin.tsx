@@ -25,6 +25,7 @@ export function UserLogin() {
       const response = await fetch(apiUrl + '/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
       
@@ -34,14 +35,6 @@ export function UserLogin() {
         throw new Error(message);
       }
 
-      const result = await response.json();
-      const token = result.data?.token;
-      if (!token) {
-        throw new Error('Authentication succeeded but no token was received.');
-      }
-      
-      // Store token
-      localStorage.setItem('user_token', token);
       navigate('/dashboard');
     } catch (err: unknown) {
       setStatus('error');

@@ -2,26 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Calendar, Clock, MonitorPlay, Users, CreditCard } from 'lucide-react';
-
-interface Workshop {
-  workshopId: string;
-  title: string;
-  subtitle: string;
-  ageGroup: { min: number; max: number };
-  durationWeeks: number;
-  mode: 'online' | 'offline' | 'hybrid';
-  feeINR: number;
-  startDate: string;
-  endDate: string;
-  seatsTotal: number;
-  seatsAvailable: number;
-  status: 'upcoming' | 'active' | 'full' | 'completed';
-  batches: Array<{ batchId: string; name: string }>;
-}
+import type { Workshop } from '../types/workshop';
 
 export function WorkshopsCatalog() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchWorkshops = async () => {
@@ -31,9 +17,12 @@ export function WorkshopsCatalog() {
         if (res.ok) {
           const result = await res.json();
           setWorkshops(result.data || []);
+        } else {
+          throw new Error('Failed to retrieve workshops data.');
         }
       } catch (err) {
         console.error('Error fetching workshops:', err);
+        setError('Could not load catalog. Please check your network or try again.');
       } finally {
         setLoading(false);
       }
@@ -73,6 +62,34 @@ export function WorkshopsCatalog() {
         {loading ? (
           <div className="flex justify-center py-24">
             <Loader2 className="animate-spin text-primary w-10 h-10" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-24 border border-red-500/20 bg-red-500/5 rounded-2xl glass">
+            <p className="text-red-400 text-lg mb-4">{error}</p>
+            <button
+              onClick={() => {
+                setLoading(true);
+                setError('');
+                const apiUrl = import.meta.env.VITE_API_URL || '/api';
+                fetch(apiUrl + '/workshop')
+                  .then(async res => {
+                    if (res.ok) {
+                      const result = await res.json();
+                      setWorkshops(result.data || []);
+                    } else {
+                      throw new Error('Failed to retrieve workshops.');
+                    }
+                  })
+                  .catch(err => {
+                    console.error(err);
+                    setError('Could not load catalog. Please check your network or try again.');
+                  })
+                  .finally(() => setLoading(false));
+              }}
+              className="px-6 py-2.5 bg-primary/20 text-primary border border-primary/30 rounded-lg hover:bg-primary hover:text-primary-foreground font-semibold transition-all shadow-[0_0_15px_rgba(0,240,255,0.1)]"
+            >
+              Retry Connection
+            </button>
           </div>
         ) : workshops.length === 0 ? (
           <div className="text-center py-24 border border-dashed border-border rounded-2xl glass">

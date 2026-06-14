@@ -25,6 +25,7 @@ export function UserSignup() {
       const response = await fetch(apiUrl + '/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
       
@@ -34,14 +35,6 @@ export function UserSignup() {
         throw new Error(message);
       }
 
-      const result = await response.json();
-      const token = result.data?.token;
-      if (!token) {
-        throw new Error('Registration succeeded but no token was received.');
-      }
-      
-      // Store token
-      localStorage.setItem('user_token', token);
       setStatus('success');
       
       // Auto-redirect to dashboard after a short delay

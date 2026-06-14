@@ -9,11 +9,17 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   // Sync token state dynamically during render
-  const userToken = localStorage.getItem('user_token');
+  const isLoggedIn = document.cookie.split(';').some(item => item.trim().startsWith('user_logged_in='));
   const adminToken = sessionStorage.getItem('admin_token');
 
-  const handleLogout = () => {
-    localStorage.removeItem('user_token');
+  const handleLogout = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      await fetch(`${apiUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch (err) {
+      console.error('Logout request failed:', err);
+    }
+    document.cookie = 'user_logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     sessionStorage.removeItem('admin_token');
     setIsOpen(false);
     navigate('/');
@@ -50,7 +56,7 @@ export function Navbar() {
             Workshops
           </Link>
 
-          {userToken && (
+          {isLoggedIn && (
             <Link
               to="/dashboard"
               className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-1.5 ${
@@ -75,7 +81,7 @@ export function Navbar() {
           )}
 
           {/* User Actions */}
-          {userToken || adminToken ? (
+          {isLoggedIn || adminToken ? (
             <button
               onClick={handleLogout}
               className="px-4 py-2 border border-border hover:bg-muted text-sm font-medium rounded-lg transition-all flex items-center gap-1.5"
@@ -105,6 +111,9 @@ export function Navbar() {
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="md:hidden p-2 text-muted-foreground hover:text-foreground focus:outline-none"
+          aria-label="Toggle mobile menu"
+          aria-expanded={isOpen}
+          aria-controls="mobile-menu"
         >
           {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -113,6 +122,7 @@ export function Navbar() {
       {/* Mobile Drawer */}
       {isOpen && (
         <motion.div
+          id="mobile-menu"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="md:hidden absolute top-16 left-0 w-full bg-background border-b border-border px-6 py-6 space-y-4 shadow-xl z-40"
@@ -132,7 +142,7 @@ export function Navbar() {
             Workshops
           </Link>
 
-          {userToken && (
+          {isLoggedIn && (
             <Link
               to="/dashboard"
               onClick={() => setIsOpen(false)}
@@ -160,7 +170,7 @@ export function Navbar() {
 
           <hr className="border-border" />
 
-          {userToken || adminToken ? (
+          {isLoggedIn || adminToken ? (
             <button
               onClick={handleLogout}
               className="w-full py-3 border border-border text-center rounded-lg font-semibold hover:bg-muted transition-colors flex items-center justify-center gap-2"

@@ -8,21 +8,7 @@ import { Outcomes } from '../components/sections/Outcomes';
 import { Details } from '../components/sections/Details';
 import { FAQ } from '../components/sections/FAQ';
 import { Register } from '../components/sections/Register';
-
-interface Workshop {
-  workshopId: string;
-  title: string;
-  subtitle: string;
-  ageGroup: { min: number; max: number };
-  durationWeeks: number;
-  mode: string;
-  feeINR: number;
-  startDate: string | Date;
-  endDate: string | Date;
-  seatsTotal: number;
-  seatsAvailable: number;
-  batches: Array<{ batchId: string; name: string }>;
-}
+import type { Workshop } from '../types/workshop';
 
 interface HeroProps {
   workshop?: {
