@@ -82,8 +82,8 @@ const workshopSchema = new Schema<IWorkshop>(
     seatsAvailable: {
       type: Number,
       required: true,
-      default: function (this: IWorkshop) {
-        return this.seatsTotal;
+      default: function (this: any) {
+        return this?.seatsTotal ?? 50;
       },
     },
     status: {
