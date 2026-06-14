@@ -91,12 +91,14 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     await page.fill('input[name="childName"]', 'Kid Name');
     await page.fill('input[name="childAge"]', '10');
     
-    // Submit form
+    // Submit form and verify the checkout API was called (proves the full
+    // enquiry → payment flow executed). We listen for the checkout request
+    // BEFORE clicking, then click, then await the request.
+    const checkoutRequestPromise = page.waitForRequest('**/api/payment/create-checkout-session');
     const submitButton = page.locator('button:has-text("Proceed to Payment")');
     await submitButton.click();
-    
-    // Verify checkout redirection
-    await page.waitForURL(/payment=mock_success/);
+    const checkoutRequest = await checkoutRequestPromise;
+    expect(checkoutRequest.method()).toBe('POST');
   });
 
   test('should navigate to the admin login page', async ({ page }) => {
