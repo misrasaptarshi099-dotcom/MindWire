@@ -49,6 +49,7 @@ export function Register() {
         if (checkoutResponse.ok) {
           const checkoutResult = await checkoutResponse.json();
           if (checkoutResult.checkoutUrl) {
+            // eslint-disable-next-line react-compiler/react-compiler
             window.location.href = checkoutResult.checkoutUrl;
             return; // Page will redirect
           }
