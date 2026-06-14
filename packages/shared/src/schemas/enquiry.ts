@@ -45,6 +45,12 @@ export const enquirySchema = z.object({
     .max(0, { message: 'Spam detected.' })
     .optional()
     .or(z.literal('')),
+  workshopId: z
+    .string()
+    .optional(),
+  batchId: z
+    .string()
+    .optional(),
 });
 
 export type EnquiryInput = z.infer<typeof enquirySchema>;

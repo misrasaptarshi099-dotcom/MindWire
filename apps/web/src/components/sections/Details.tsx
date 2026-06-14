@@ -1,15 +1,30 @@
 import { motion } from 'framer-motion';
 import { Calendar, Clock, MonitorPlay, Users, Wallet } from 'lucide-react';
 
-const details = [
-  { label: "Age Group", value: "8–14 Years", icon: <Users /> },
-  { label: "Duration", value: "4 Weeks (20 sessions × 90 min)", icon: <Clock /> },
-  { label: "Mode", value: "Online (Live + Recorded)", icon: <MonitorPlay /> },
-  { label: "Start Date", value: "15 July 2026", icon: <Calendar /> },
-  { label: "Fee", value: "₹2,999 (all-inclusive)", icon: <Wallet /> },
-];
+export interface DetailsProps {
+  workshop?: {
+    ageGroup: { min: number; max: number };
+    durationWeeks: number;
+    mode: string;
+    startDate: string | Date;
+    feeINR: number;
+  };
+}
 
-export function Details() {
+export function Details({ workshop }: DetailsProps) {
+  const details = workshop ? [
+    { label: "Age Group", value: `${workshop.ageGroup.min}–${workshop.ageGroup.max} Years`, icon: <Users className="w-5 h-5" /> },
+    { label: "Duration", value: `${workshop.durationWeeks} Weeks`, icon: <Clock className="w-5 h-5" /> },
+    { label: "Mode", value: workshop.mode.charAt(0).toUpperCase() + workshop.mode.slice(1), icon: <MonitorPlay className="w-5 h-5" /> },
+    { label: "Start Date", value: new Date(workshop.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), icon: <Calendar className="w-5 h-5" /> },
+    { label: "Fee", value: `₹${workshop.feeINR.toLocaleString()} (all-inclusive)`, icon: <Wallet className="w-5 h-5" /> },
+  ] : [
+    { label: "Age Group", value: "8–14 Years", icon: <Users className="w-5 h-5" /> },
+    { label: "Duration", value: "4 Weeks (20 sessions × 90 min)", icon: <Clock className="w-5 h-5" /> },
+    { label: "Mode", value: "Online (Live + Recorded)", icon: <MonitorPlay className="w-5 h-5" /> },
+    { label: "Start Date", value: "15 July 2026", icon: <Calendar className="w-5 h-5" /> },
+    { label: "Fee", value: "₹2,999 (all-inclusive)", icon: <Wallet className="w-5 h-5" /> },
+  ];
   return (
     <section className="py-24">
       <div className="max-w-4xl mx-auto px-6">
