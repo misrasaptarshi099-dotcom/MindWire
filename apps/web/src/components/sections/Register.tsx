@@ -22,6 +22,7 @@ export function Register() {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api';
 
+      // Step 1: Submit the enquiry
       const response = await fetch(apiUrl + '/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -33,9 +34,29 @@ export function Register() {
         try { const result = await response.json(); message = result.message || message; } catch { /* JSON parse failed */ }
         throw new Error(message);
       }
-      
+
+      const enquiryResult = await response.json();
+      const enquiryId = enquiryResult.data?.enquiryId;
+
+      // Step 2: Create a checkout session and redirect to Stripe
+      if (enquiryId) {
+        const checkoutResponse = await fetch(apiUrl + '/payment/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enquiryId }),
+        });
+
+        if (checkoutResponse.ok) {
+          const checkoutResult = await checkoutResponse.json();
+          if (checkoutResult.checkoutUrl) {
+            window.location.href = checkoutResult.checkoutUrl;
+            return; // Page will redirect
+          }
+        }
+      }
+
+      // Fallback: show success if checkout redirect isn't available
       setStatus('success');
-      // In a full integration, here we would redirect to a payment checkout session
     } catch (err: unknown) {
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');

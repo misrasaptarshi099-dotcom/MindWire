@@ -38,6 +38,107 @@ if (stripeSecret && !stripeSecret.startsWith('sk_test_YOUR_')) {
   logger.warn('Stripe Secret Key is missing or invalid. Payments will fall back to MOCK mode.');
 }
 
+// Helper to get the frontend URL for Stripe redirect
+const getFrontendUrl = (): string => {
+  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL !== '*') {
+    return process.env.FRONTEND_URL;
+  }
+  const corsOrigins = process.env.CORS_ORIGINS;
+  if (corsOrigins) {
+    return corsOrigins.split(',')[0].trim();
+  }
+  return 'http://localhost:5173';
+};
+
+// @route   POST /api/payment/create-checkout-session
+// @desc    Create a Stripe Checkout Session and return the redirect URL
+// @access  Public
+router.post('/create-checkout-session', async (req: Request, res: Response, next: NextFunction) => {
+  const { enquiryId } = req.body;
+
+  if (!enquiryId) {
+    return next(new AppError('Enquiry ID is required.', 400, 'VALIDATION_ERROR'));
+  }
+
+  try {
+    const enquiry = await Enquiry.findOne({ enquiryId });
+    if (!enquiry) {
+      return next(new AppError('Enquiry not found.', 404, 'NOT_FOUND'));
+    }
+
+    if (enquiry.status === 'enrolled') {
+      return next(new AppError('This registration has already been paid and enrolled.', 400, 'ALREADY_ENROLLED'));
+    }
+
+    const workshop = await Workshop.findOne({ workshopId: enquiry.workshopId });
+    if (!workshop) {
+      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
+    }
+
+    const frontendUrl = getFrontendUrl();
+
+    if (!stripe) {
+      // Mock mode — simulate a successful redirect
+      logger.info(`[MOCK CHECKOUT] Simulating checkout session for enquiry ${enquiryId}`);
+      enquiry.status = 'payment_initiated';
+      enquiry.payment = {
+        orderId: 'mock_cs_' + crypto.randomUUID().slice(0, 8),
+        status: 'pending',
+        amount: workshop.feeINR,
+        currency: 'INR',
+      };
+      await enquiry.save();
+
+      return res.status(200).json({
+        success: true,
+        checkoutUrl: `${frontendUrl}?payment=mock_success&ref=${enquiry.referenceCode}`,
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [
+        {
+          price_data: {
+            currency: 'inr',
+            product_data: {
+              name: workshop.title || 'MindWire AI & Robotics Workshop',
+              description: `Registration for ${enquiry.name} — Ref: ${enquiry.referenceCode}`,
+            },
+            unit_amount: workshop.feeINR * 100, // Stripe expects paise
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        enquiryId,
+        email: enquiry.email,
+        name: enquiry.name,
+      },
+      customer_email: enquiry.email,
+      success_url: `${frontendUrl}?payment=success&ref=${enquiry.referenceCode}`,
+      cancel_url: `${frontendUrl}?payment=cancelled&ref=${enquiry.referenceCode}`,
+    });
+
+    enquiry.status = 'payment_initiated';
+    enquiry.payment = {
+      orderId: session.id,
+      status: 'pending',
+      amount: workshop.feeINR,
+      currency: 'INR',
+    };
+    await enquiry.save();
+
+    res.status(200).json({
+      success: true,
+      checkoutUrl: session.url,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @route   POST /api/payment/create-order
 // @desc    Create Stripe PaymentIntent for workshop registration
 // @access  Public
