@@ -43,11 +43,3 @@ jobs:
 
       - name: Run E2E Tests
         run: npm run test --workspace=web
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          NODE_ENV: test
-          PORT: 8080
-          FRONTEND_URL: http://localhost:5173
-          CORS_ORIGINS: http://localhost:5173,http://localhost:5174

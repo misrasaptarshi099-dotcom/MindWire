@@ -113,7 +113,12 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
+  // Integration test: runs locally with `npm run dev` (full stack).
+  // Skipped in CI because the API needs MongoDB — using production credentials
+  // in CI would pollute the live database with test data.
   test('should complete the full authenticated enquiry and checkout API flow without mocking', async ({ request }) => {
+    test.skip(!!process.env.CI, 'Needs live API + database (only runs locally with npm run dev)');
+
     const uniqueEmail = `testuser_${Date.now()}@example.com`;
     
     // 1. Register a new user
