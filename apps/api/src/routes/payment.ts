@@ -6,6 +6,7 @@ import { getRedisClient } from '../config/redis.js';
 import { AppError } from '../utils/errors.js';
 import { sendEnrollmentEmail } from '../utils/email.js';
 import { seedDefaultWorkshop } from './workshop.js';
+import { protect } from '../middlewares/auth.js';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -53,8 +54,8 @@ const getFrontendUrl = (): string => {
 
 // @route   POST /api/payment/create-checkout-session
 // @desc    Create a Stripe Checkout Session and return the redirect URL
-// @access  Public
-router.post('/create-checkout-session', async (req: Request, res: Response, next: NextFunction) => {
+// @access  Private
+router.post('/create-checkout-session', protect, async (req: Request, res: Response, next: NextFunction) => {
   const { enquiryId } = req.body;
 
   if (!enquiryId) {
@@ -65,6 +66,10 @@ router.post('/create-checkout-session', async (req: Request, res: Response, next
     const enquiry = await Enquiry.findOne({ enquiryId });
     if (!enquiry) {
       return next(new AppError('Enquiry not found.', 404, 'NOT_FOUND'));
+    }
+
+    if (enquiry.email !== req.user?.email) {
+      return next(new AppError('Not authorized to access this enquiry.', 403, 'FORBIDDEN'));
     }
 
     if (enquiry.status === 'enrolled') {

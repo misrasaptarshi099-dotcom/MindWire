@@ -9,6 +9,7 @@ import { getRedisClient } from '../config/redis.js';
 import { sendEnquiryEmail } from '../utils/email.js';
 import { enquirySchema } from '@mindwire/shared';
 import { seedDefaultWorkshop } from './workshop.js';
+import { protect, restrictTo } from '../middlewares/auth.js';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -37,7 +38,7 @@ router.post(
   rateLimiter(5, 60), // 5 requests per minute
   validateBody(enquirySchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { name, email, phone, childName, childAge, message, hp } = req.body;
+    const { name, email, phone, childName, childAge, message, hp, workshopId, batchId } = req.body;
 
     // Check honeypot for spam bots
     if (hp) {
@@ -46,7 +47,8 @@ router.post(
     }
 
     const redis = getRedisClient();
-    const dupKey = `enquiry:dup:${email}`;
+    const targetWorkshopId = workshopId || 'AI_ROBOTICS_SUMMER_2026';
+    const dupKey = `enquiry:dup:${email}:${targetWorkshopId}`;
 
     // 1. Atomic Redis lock to prevent concurrent duplicate submissions
     const lockAcquired = await redis.set(dupKey, '1', 'EX', 86400, 'NX');
@@ -62,7 +64,7 @@ router.post(
 
     try {
       // 2. Check Database for duplicate registration
-      const existingEnquiry = await Enquiry.findOne({ email });
+      const existingEnquiry = await Enquiry.findOne({ email, workshopId: targetWorkshopId });
       if (existingEnquiry) {
         await redis.del(dupKey); // Release lock — DB already has this record
         return next(
@@ -74,12 +76,22 @@ router.post(
         );
       }
 
-      // 3. Check seats availability
-      let workshop = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
+      // 3. Resolve the actual workshop and check seats availability
+      let workshop = await Workshop.findOne({ workshopId: targetWorkshopId });
       if (!workshop) {
         workshop = await seedDefaultWorkshop();
       }
-      if (workshop && workshop.seatsAvailable <= 0) {
+
+      if (!workshop) {
+        await redis.del(dupKey);
+        return next(new AppError('Workshop configuration not found.', 500, 'SERVER_ERROR'));
+      }
+
+      const resolvedWorkshopId = workshop.workshopId;
+      const isBatchValid = workshop.batches && workshop.batches.some(b => b.batchId === batchId);
+      const targetBatchId = isBatchValid && batchId ? batchId : (workshop.batches[0]?.batchId || 'BATCH_01');
+
+      if (workshop.seatsAvailable <= 0) {
         await redis.del(dupKey); // Release lock so they can try again if seats open
         return next(
           new AppError(
@@ -108,6 +120,8 @@ router.post(
         childAge,
         message,
         status: 'pending',
+        workshopId: resolvedWorkshopId,
+        batchId: targetBatchId,
         ipAddress: clientIp,
         userAgent: req.headers['user-agent'] || 'unknown',
       });
@@ -131,5 +145,68 @@ router.post(
     }
   }
 );
+
+// @route   GET /api/enquiry
+// @desc    Get all enquiries
+// @access  Private (Admin only)
+router.get('/', protect, restrictTo('admin'), async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const enquiries = await Enquiry.find({}).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: enquiries,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/enquiry/user/me
+// @desc    Get all registrations / enquiries for the logged-in user
+// @access  Private
+router.get('/user/me', protect, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user || !req.user.email) {
+      return next(new AppError('User details missing from token.', 400, 'BAD_REQUEST'));
+    }
+    
+    // Find all registrations for this email
+    const enquiries = await Enquiry.find({ email: req.user.email }).sort({ createdAt: -1 });
+    
+    // Fetch details of all associated workshops to enrich the data
+    const enrichedEnquiries = await Promise.all(
+      enquiries.map(async (enq) => {
+        const workshop = await Workshop.findOne({ workshopId: enq.workshopId });
+        return {
+          enquiryId: enq.enquiryId,
+          referenceCode: enq.referenceCode,
+          name: enq.name,
+          email: enq.email,
+          phone: enq.phone,
+          childName: enq.childName,
+          childAge: enq.childAge,
+          message: enq.message,
+          status: enq.status,
+          payment: enq.payment,
+          workshopId: enq.workshopId,
+          batchId: enq.batchId,
+          createdAt: enq.createdAt,
+          enrolledAt: enq.enrolledAt,
+          workshopTitle: workshop?.title || 'MindWire Workshop',
+          workshopFee: workshop?.feeINR || 2999,
+          workshopMode: workshop?.mode || 'hybrid',
+          workshopStartDate: workshop?.startDate,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: enrichedEnquiries,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

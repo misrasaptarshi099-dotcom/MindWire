@@ -40,11 +40,23 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 
     const token = signToken(user._id.toString(), user.role);
 
+    res.cookie('user_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
+    res.cookie('user_logged_in', 'true', {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
     res.status(201).json({
       success: true,
       message: 'Registration successful.',
       data: {
-        token,
         user: {
           id: user._id.toString(),
           name: user.name,
@@ -72,11 +84,23 @@ router.post('/login', rateLimiter(5, 60), validateBody(loginSchema), async (req:
 
     const token = signToken(user._id.toString(), user.role);
 
+    res.cookie('user_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
+    res.cookie('user_logged_in', 'true', {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
     res.status(200).json({
       success: true,
       message: 'Login successful.',
       data: {
-        token,
         user: {
           id: user._id.toString(),
           name: user.name,
@@ -99,6 +123,18 @@ router.get('/me', protect, async (req: Request, res: Response) => {
     data: {
       user: req.user,
     },
+  });
+});
+
+// @route   POST /api/auth/logout
+// @desc    Logout user & clear cookies
+// @access  Public
+router.post('/logout', (_req: Request, res: Response) => {
+  res.clearCookie('user_token');
+  res.clearCookie('user_logged_in');
+  res.status(200).json({
+    success: true,
+    message: 'Logged out successfully.'
   });
 });
 

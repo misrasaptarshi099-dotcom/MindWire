@@ -24,12 +24,21 @@ const logger = winston.createLogger({
 
 import { app } from './app.js';
 import { connectDB } from './config/db.js';
+import { seedDefaultWorkshop } from './routes/workshop.js';
 
 const PORT = process.env.PORT || 8080;
 
 const startServer = async () => {
   // Connect to Database
   await connectDB();
+
+  // Seed default workshop data on startup
+  try {
+    await seedDefaultWorkshop();
+    logger.info('Default workshop seeded/verified.');
+  } catch (error) {
+    logger.error(`Error seeding default workshop: ${(error as Error).message}`);
+  }
 
   // Start listening
   const server = app.listen(PORT, () => {

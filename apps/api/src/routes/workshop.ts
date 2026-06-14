@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { Workshop } from '../models/Workshop.js';
 import { getRedisClient } from '../config/redis.js';
 import { AppError } from '../utils/errors.js';
+import { protect, restrictTo } from '../middlewares/auth.js';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -141,6 +142,126 @@ router.get('/seats', async (_req: Request, res: Response, next: NextFunction) =>
       data: {
         seatsAvailable: workshop.seatsAvailable,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/workshop
+// @desc    Get all workshops
+// @access  Public
+router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const workshops = await Workshop.find({}).sort({ startDate: 1 });
+    res.status(200).json({
+      success: true,
+      data: workshops,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/workshop
+// @desc    Create a new workshop
+// @access  Private (Admin only)
+router.post('/', protect, restrictTo('admin'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Basic verification of required fields
+    const { workshopId, title, subtitle, ageGroup, durationWeeks, mode, feeINR, startDate, endDate, seatsTotal } = req.body;
+    if (!workshopId || !title || !subtitle || !ageGroup || !durationWeeks || !mode || !feeINR || !startDate || !endDate || !seatsTotal) {
+      return next(new AppError('All required fields must be provided.', 400, 'VALIDATION_ERROR'));
+    }
+
+    const existing = await Workshop.findOne({ workshopId });
+    if (existing) {
+      return next(new AppError('Workshop with this ID already exists.', 409, 'ALREADY_EXISTS'));
+    }
+
+    // Default batches if not provided
+    const batches = req.body.batches || [
+      {
+        batchId: 'BATCH_01',
+        name: 'Morning Tech Pioneers (09:00 AM - 12:00 PM)',
+        seats: Math.floor(seatsTotal / 2),
+        enrolled: 0,
+      },
+      {
+        batchId: 'BATCH_02',
+        name: 'Afternoon Code Crafters (02:00 PM - 05:00 PM)',
+        seats: Math.ceil(seatsTotal / 2),
+        enrolled: 0,
+      },
+    ];
+
+    const workshop = await Workshop.create({
+      ...req.body,
+      batches,
+    });
+
+    // Invalidate Redis caches
+    const redis = getRedisClient();
+    await redis.del('workshop:info');
+    await redis.del('workshop:seats');
+
+    res.status(201).json({
+      success: true,
+      data: workshop,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   PUT /api/workshop/:workshopId
+// @desc    Update a workshop
+// @access  Private (Admin only)
+router.put('/:workshopId', protect, restrictTo('admin'), async (req: Request, res: Response, next: NextFunction) => {
+  const { workshopId } = req.params;
+  try {
+    const workshop = await Workshop.findOneAndUpdate(
+      { workshopId },
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!workshop) {
+      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
+    }
+
+    // Invalidate Redis caches
+    const redis = getRedisClient();
+    await redis.del('workshop:info');
+    await redis.del('workshop:seats');
+
+    res.status(200).json({
+      success: true,
+      data: workshop,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   DELETE /api/workshop/:workshopId
+// @desc    Delete a workshop
+// @access  Private (Admin only)
+router.delete('/:workshopId', protect, restrictTo('admin'), async (req: Request, res: Response, next: NextFunction) => {
+  const { workshopId } = req.params;
+  try {
+    const workshop = await Workshop.findOneAndDelete({ workshopId });
+    if (!workshop) {
+      return next(new AppError('Workshop not found.', 404, 'NOT_FOUND'));
+    }
+
+    // Invalidate Redis caches
+    const redis = getRedisClient();
+    await redis.del('workshop:info');
+    await redis.del('workshop:seats');
+
+    res.status(200).json({
+      success: true,
+      message: 'Workshop deleted successfully.',
     });
   } catch (error) {
     next(error);

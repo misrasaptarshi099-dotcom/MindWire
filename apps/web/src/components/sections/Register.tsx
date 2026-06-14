@@ -6,27 +6,50 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
-export function Register() {
+export interface RegisterProps {
+  workshop?: {
+    workshopId: string;
+    feeINR: number;
+    batches: Array<{ batchId: string; name: string }>;
+  };
+}
+
+export function Register({ workshop }: RegisterProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof enquirySchema>>({
     resolver: zodResolver(enquirySchema),
-    defaultValues: { hp: '' }
+    defaultValues: { hp: '', batchId: '' } as Partial<z.input<typeof enquirySchema>>
   });
 
-  const onSubmit = async (data: z.infer<typeof enquirySchema>) => {
+  const onSubmit = async (data: z.input<typeof enquirySchema>) => {
     setStatus('loading');
     setErrorMessage('');
     
     try {
+      // Validate that a valid batch is actually available before constructing payload
+      if (!workshop?.batches || workshop.batches.length === 0) {
+        throw new Error('No batches are currently available for this workshop.');
+      }
+
+      const selectedBatchId = data.batchId || workshop.batches[0].batchId;
+      if (!selectedBatchId) {
+        throw new Error('Please select a valid batch.');
+      }
+
       const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      const payload = {
+        ...data,
+        workshopId: workshop.workshopId,
+        batchId: selectedBatchId
+      };
 
       // Step 1: Submit the enquiry
       const response = await fetch(apiUrl + '/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {
@@ -166,6 +189,23 @@ export function Register() {
             </div>
           </div>
 
+          {workshop && workshop.batches && workshop.batches.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-muted-foreground">Select Batch *</label>
+              <select 
+                {...register("batchId")}
+                defaultValue={workshop.batches[0]?.batchId}
+                className="w-full bg-background border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
+              >
+                {workshop.batches.map((b) => (
+                  <option key={b.batchId} value={b.batchId}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {status === 'error' && (
             <div className="p-3 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
               {errorMessage}
@@ -177,7 +217,7 @@ export function Register() {
             disabled={status === 'loading'}
             className="w-full bg-primary text-primary-foreground font-semibold py-4 rounded-lg hover:bg-primary/90 transition-all flex justify-center items-center gap-2 mt-4"
           >
-            {status === 'loading' ? <Loader2 className="animate-spin w-5 h-5" /> : `Proceed to Payment — ₹${WORKSHOP_PRICE.toLocaleString()}`}
+            {status === 'loading' ? <Loader2 className="animate-spin w-5 h-5" /> : `Proceed to Payment — ₹${(workshop?.feeINR || WORKSHOP_PRICE).toLocaleString()}`}
           </button>
         </form>
       </div>

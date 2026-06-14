@@ -1,12 +1,23 @@
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { Spark } from '../components/sections/Spark';
 import { Journey } from '../components/sections/Journey';
 import { Outcomes } from '../components/sections/Outcomes';
 import { Details } from '../components/sections/Details';
 import { FAQ } from '../components/sections/FAQ';
 import { Register } from '../components/sections/Register';
+import type { Workshop } from '../types/workshop';
 
-function Hero() {
+interface HeroProps {
+  workshop?: {
+    title: string;
+    subtitle: string;
+  };
+}
+
+function Hero({ workshop }: HeroProps) {
   const scrollToRegister = () => {
     document.getElementById('register')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -27,12 +38,12 @@ function Hero() {
           &gt; MISSION_BRIEFING_INITIALIZED
         </div>
         
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 text-glow">
-          MindWire
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-glow leading-tight">
+          {workshop?.title || 'MindWire'}
         </h1>
         
-        <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto font-light leading-relaxed">
-          A child's first encounter with AI should feel like discovering a superpower. Welcome to the ultimate robotics workshop.
+        <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto font-light leading-relaxed">
+          {workshop?.subtitle || "A child's first encounter with AI should feel like discovering a superpower. Welcome to the ultimate robotics workshop."}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -46,15 +57,50 @@ function Hero() {
 }
 
 export function Landing() {
+  const { workshopId } = useParams();
+  const [workshop, setWorkshop] = useState<Workshop | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWorkshop = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        const res = await fetch(apiUrl + '/workshop');
+        if (res.ok) {
+          const result = await res.json();
+          const list = (result.data || []) as Workshop[];
+          const targetId = workshopId || 'AI_ROBOTICS_SUMMER_2026';
+          const match = list.find((w: Workshop) => w.workshopId === targetId);
+          if (match) {
+            setWorkshop(match);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching workshop details:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWorkshop();
+  }, [workshopId]);
+
+  if (loading && workshopId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+      </div>
+    );
+  }
+
   return (
     <main className="bg-background text-foreground selection:bg-primary selection:text-black">
-      <Hero />
+      <Hero workshop={workshop} />
       <Spark />
       <Journey />
       <Outcomes />
-      <Details />
+      <Details workshop={workshop} />
       <FAQ />
-      <Register />
+      <Register workshop={workshop} />
     </main>
   );
 }

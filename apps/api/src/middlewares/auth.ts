@@ -32,6 +32,17 @@ export const protect = async (req: Request, _res: Response, next: NextFunction):
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.headers.cookie) {
+    const cookies = req.headers.cookie.split(';').reduce((acc, c) => {
+      const parts = c.split('=');
+      const key = parts[0]?.trim();
+      const val = parts.slice(1).join('=')?.trim();
+      if (key) acc[key] = val;
+      return acc;
+    }, {} as Record<string, string>);
+    if (cookies.user_token) {
+      token = cookies.user_token;
+    }
   }
 
   if (!token) {
