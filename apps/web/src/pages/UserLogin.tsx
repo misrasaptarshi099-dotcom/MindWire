@@ -5,11 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginInput } from '@mindwire/shared';
 import { motion } from 'framer-motion';
 import { Loader2, KeyRound } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export function UserLogin() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   
   const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -35,7 +37,11 @@ export function UserLogin() {
         throw new Error(message);
       }
 
-      navigate('/dashboard');
+      const result = await response.json();
+      if (result.success && result.data?.user) {
+        setUser(result.data.user);
+        navigate('/dashboard');
+      }
     } catch (err: unknown) {
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : 'Invalid credentials');

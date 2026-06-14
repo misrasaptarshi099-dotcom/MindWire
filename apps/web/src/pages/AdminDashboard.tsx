@@ -16,6 +16,7 @@ interface Enquiry {
   createdAt: string;
   workshopId: string;
   batchId: string;
+  feeINR?: number;
 }
 
 interface Batch {
@@ -295,8 +296,7 @@ export function AdminDashboard() {
             <div className="text-muted-foreground text-sm font-medium mb-2 font-mono">Collected Revenue</div>
             <div className="text-3xl font-bold text-primary">
               ₹{enquiries.filter(e => e.status === 'enrolled').reduce((acc, curr) => {
-                const workshop = workshops.find(w => w.workshopId === curr.workshopId);
-                const fee = workshop ? workshop.feeINR : 2999;
+                const fee = curr.feeINR ?? (workshops.find(w => w.workshopId === curr.workshopId)?.feeINR || 2999);
                 return acc + fee;
               }, 0).toLocaleString()}
             </div>

@@ -5,11 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginInput } from '@mindwire/shared';
 import { motion } from 'framer-motion';
 import { Loader2, Lock } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export function AdminLogin() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   
   const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -25,6 +27,7 @@ export function AdminLogin() {
       const response = await fetch(apiUrl + '/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
       
@@ -35,14 +38,12 @@ export function AdminLogin() {
       }
 
       const result = await response.json();
-      const token = result.data?.token;
-      if (!token) {
-        throw new Error('Authentication succeeded but no token was received.');
+      if (result.success && result.data?.user) {
+        setUser(result.data.user);
+        navigate('/admin/dashboard');
+      } else {
+        throw new Error('Authentication succeeded but user data was missing.');
       }
-      
-      // Store token
-      sessionStorage.setItem('admin_token', token);
-      navigate('/admin/dashboard');
     } catch (err: unknown) {
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : 'Invalid credentials');

@@ -5,11 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, type RegisterInput } from '@mindwire/shared';
 import { motion } from 'framer-motion';
 import { Loader2, UserPlus } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from 'react';
 
 export function UserSignup() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -35,17 +38,26 @@ export function UserSignup() {
         throw new Error(message);
       }
 
+      const result = await response.json();
+      if (result.success && result.data?.user) {
+        setUser(result.data.user);
+      }
+
       setStatus('success');
-      
-      // Auto-redirect to dashboard after a short delay
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
     } catch (err: unknown) {
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
+
+  useEffect(() => {
+    if (status === 'success') {
+      const timer = setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [status, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6 pt-24">

@@ -75,7 +75,7 @@ export const sendEnquiryEmail = async (email: string, name: string, referenceCod
       logger.error(`Failed to send enquiry email via Resend: ${(error as Error).message}`);
     }
   } else {
-    logger.info(`[MOCK EMAIL] To: ${email}\nSubject: ${subject}\nBody: ${html}`);
+    logger.info(`[MOCK EMAIL] To: ${maskEmail(email)}\nSubject: ${subject}\nBody: <HTML Content Redacted>`);
   }
 };
 
@@ -110,6 +110,38 @@ export const sendEnrollmentEmail = async (email: string, name: string, reference
       logger.error(`Failed to send enrollment email via Resend: ${(error as Error).message}`);
     }
   } else {
-    logger.info(`[MOCK EMAIL] To: ${email}\nSubject: ${subject}\nBody: ${html}`);
+    logger.info(`[MOCK EMAIL] To: ${maskEmail(email)}\nSubject: ${subject}\nBody: <HTML Content Redacted>`);
+  }
+};
+
+export const sendAccountCreatedEmail = async (email: string, name: string) => {
+  const subject = 'Welcome to MindWire!';
+  const html = `
+    <div style="font-family: monospace; background-color: #0b0f19; color: #f8fafc; padding: 40px; border-radius: 8px;">
+      <h1 style="color: #3b82f6; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">MINDWIRE // ACCOUNT INITIALIZED</h1>
+      <p>Hello ${escapeHtml(name)},</p>
+      <p>Your account at MindWire has been successfully created and verified.</p>
+      <p>You can now log in to the dashboard to register for workshops, track enrollment statuses, and view upcoming robotics camps.</p>
+      <p>If you did not create this account, please contact us immediately.</p>
+      <br />
+      <hr style="border: 0; border-top: 1px solid #1e293b;" />
+      <p style="font-size: 0.8rem; color: #64748b;">MINDWIRE ROBOTICS SYSTEM // WELCOME SEQUENCE</p>
+    </div>
+  `;
+
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+        to: email,
+        subject,
+        html,
+      });
+      logger.info(`Account creation welcome email sent successfully to ${maskEmail(email)}`);
+    } catch (error) {
+      logger.error(`Failed to send account creation email via Resend: ${(error as Error).message}`);
+    }
+  } else {
+    logger.info(`[MOCK EMAIL] To: ${maskEmail(email)}\nSubject: ${subject}\nBody: <HTML Content Redacted>`);
   }
 };

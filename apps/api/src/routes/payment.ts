@@ -147,8 +147,8 @@ router.post('/create-checkout-session', protect, async (req: Request, res: Respo
 
 // @route   POST /api/payment/create-order
 // @desc    Create Stripe PaymentIntent for workshop registration
-// @access  Public
-router.post('/create-order', async (req: Request, res: Response, next: NextFunction) => {
+// @access  Private
+router.post('/create-order', protect, async (req: Request, res: Response, next: NextFunction) => {
   const { enquiryId, email, name } = req.body;
 
   if (!enquiryId) {
@@ -159,6 +159,10 @@ router.post('/create-order', async (req: Request, res: Response, next: NextFunct
     const enquiry = await Enquiry.findOne({ enquiryId });
     if (!enquiry) {
       return next(new AppError('Enquiry not found.', 404, 'NOT_FOUND'));
+    }
+
+    if (enquiry.email !== req.user?.email) {
+      return next(new AppError('Not authorized to access this enquiry.', 403, 'FORBIDDEN'));
     }
 
     if (enquiry.status === 'enrolled') {
@@ -223,8 +227,8 @@ router.post('/create-order', async (req: Request, res: Response, next: NextFunct
 
 // @route   POST /api/payment/verify
 // @desc    Verify Stripe payment status after client checkout
-// @access  Public
-router.post('/verify', async (req: Request, res: Response, next: NextFunction) => {
+// @access  Private
+router.post('/verify', protect, async (req: Request, res: Response, next: NextFunction) => {
   const { stripe_order_id, enquiryId } = req.body;
 
   if (!stripe_order_id || !enquiryId) {
@@ -235,6 +239,10 @@ router.post('/verify', async (req: Request, res: Response, next: NextFunction) =
     const enquiry = await Enquiry.findOne({ enquiryId });
     if (!enquiry) {
       return next(new AppError('Enquiry not found.', 404, 'NOT_FOUND'));
+    }
+
+    if (enquiry.email !== req.user?.email) {
+      return next(new AppError('Not authorized to access this enquiry.', 403, 'FORBIDDEN'));
     }
 
     if (enquiry.status === 'enrolled') {

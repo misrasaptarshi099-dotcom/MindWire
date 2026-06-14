@@ -11,5 +11,5 @@ export interface Workshop {
   seatsTotal: number;
   seatsAvailable: number;
   status: 'upcoming' | 'active' | 'full' | 'completed';
-  batches: Array<{ batchId: string; name: string }>;
+  batches: Array<{ batchId: string; name: string; seats: number; enrolled: number }>;
 }

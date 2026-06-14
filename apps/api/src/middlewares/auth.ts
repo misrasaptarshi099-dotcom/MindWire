@@ -29,9 +29,11 @@ if (!jwtSecret) {
 
 export const protect = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   let token: string | undefined;
+  let authSource: 'header' | 'cookie' | null = null;
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
+    authSource = 'header';
   } else if (req.headers.cookie) {
     const cookies = req.headers.cookie.split(';').reduce((acc, c) => {
       const parts = c.split('=');
@@ -42,11 +44,38 @@ export const protect = async (req: Request, _res: Response, next: NextFunction):
     }, {} as Record<string, string>);
     if (cookies.user_token) {
       token = cookies.user_token;
+      authSource = 'cookie';
     }
   }
 
   if (!token) {
     return next(new AppError('Not authorized to access this route.', 401, 'NOT_AUTHORIZED'));
+  }
+
+  // CSRF Protection for cookie-based auth on unsafe methods
+  if (authSource === 'cookie' && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const rawOrigin = req.headers.origin || req.headers.referer;
+    let requestOrigin = rawOrigin;
+    if (rawOrigin) {
+      try {
+        requestOrigin = new URL(rawOrigin).origin;
+      } catch (e) {
+        // Fallback if unparseable
+      }
+    }
+    
+    const corsOrigins = process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+      : ['http://localhost:5173', 'http://localhost:5174'];
+    
+    if (!requestOrigin) {
+       return next(new AppError('CSRF validation failed: Origin or Referer header missing.', 403, 'CSRF_FAILED'));
+    }
+
+    const isAllowed = corsOrigins.some(allowed => requestOrigin === allowed);
+    if (!isAllowed) {
+       return next(new AppError('CSRF validation failed: Origin not allowed.', 403, 'CSRF_FAILED'));
+    }
   }
 
   try {
