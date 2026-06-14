@@ -24,7 +24,7 @@ export const rateLimiter = (limit: number, windowSeconds: number) => {
     const ipStr = req.ip || 'unknown';
     
     const redis = getRedisClient();
-    const key = `ratelimit:${req.originalUrl}:${ipStr}`;
+    const key = `ratelimit:${req.path}:${ipStr}`;
 
     try {
       const current = await redis.incr(key);

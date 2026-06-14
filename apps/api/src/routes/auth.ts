@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { AppError } from '../utils/errors.js';
 import { validateBody } from '../middlewares/validation.js';
+import { rateLimiter } from '../middlewares/rateLimit.js';
 import { protect } from '../middlewares/auth.js';
 import { registerSchema, loginSchema } from '@mindwire/shared';
 
@@ -60,7 +61,7 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
 // @access  Public
-router.post('/login', validateBody(loginSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login', rateLimiter(5, 60), validateBody(loginSchema), async (req: Request, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
 
   try {
