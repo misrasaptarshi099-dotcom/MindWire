@@ -75,7 +75,7 @@ export const sendEnquiryEmail = async (email: string, name: string, referenceCod
       logger.error(`Failed to send enquiry email via Resend: ${(error as Error).message}`);
     }
   } else {
-    logger.info(`[MOCK EMAIL] To: ${email}\nSubject: ${subject}\nBody: ${html}`);
+    logger.info(`[MOCK EMAIL] To: ${maskEmail(email)}\nSubject: ${subject}\nBody: <HTML Content Redacted>`);
   }
 };
 
@@ -110,7 +110,7 @@ export const sendEnrollmentEmail = async (email: string, name: string, reference
       logger.error(`Failed to send enrollment email via Resend: ${(error as Error).message}`);
     }
   } else {
-    logger.info(`[MOCK EMAIL] To: ${email}\nSubject: ${subject}\nBody: ${html}`);
+    logger.info(`[MOCK EMAIL] To: ${maskEmail(email)}\nSubject: ${subject}\nBody: <HTML Content Redacted>`);
   }
 };
 
@@ -142,6 +142,6 @@ export const sendAccountCreatedEmail = async (email: string, name: string) => {
       logger.error(`Failed to send account creation email via Resend: ${(error as Error).message}`);
     }
   } else {
-    logger.info(`[MOCK EMAIL] To: ${email}\nSubject: ${subject}\nBody: ${html}`);
+    logger.info(`[MOCK EMAIL] To: ${maskEmail(email)}\nSubject: ${subject}\nBody: <HTML Content Redacted>`);
   }
 };

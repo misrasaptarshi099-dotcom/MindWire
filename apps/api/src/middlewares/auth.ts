@@ -54,7 +54,16 @@ export const protect = async (req: Request, _res: Response, next: NextFunction):
 
   // CSRF Protection for cookie-based auth on unsafe methods
   if (authSource === 'cookie' && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const requestOrigin = req.headers.origin || req.headers.referer;
+    const rawOrigin = req.headers.origin || req.headers.referer;
+    let requestOrigin = rawOrigin;
+    if (rawOrigin) {
+      try {
+        requestOrigin = new URL(rawOrigin).origin;
+      } catch (e) {
+        // Fallback if unparseable
+      }
+    }
+    
     const corsOrigins = process.env.CORS_ORIGINS
       ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
       : ['http://localhost:5173', 'http://localhost:5174'];
@@ -63,7 +72,7 @@ export const protect = async (req: Request, _res: Response, next: NextFunction):
        return next(new AppError('CSRF validation failed: Origin or Referer header missing.', 403, 'CSRF_FAILED'));
     }
 
-    const isAllowed = corsOrigins.some(allowed => requestOrigin.startsWith(allowed));
+    const isAllowed = corsOrigins.some(allowed => requestOrigin === allowed);
     if (!isAllowed) {
        return next(new AppError('CSRF validation failed: Origin not allowed.', 403, 'CSRF_FAILED'));
     }

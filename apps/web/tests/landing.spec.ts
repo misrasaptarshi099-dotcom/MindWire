@@ -73,7 +73,7 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          checkoutUrl: '#mock-checkout',
+          checkoutUrl: 'http://localhost:5173/?payment=mock_success&ref=MW-TEST-999',
         })
       });
     });
@@ -96,7 +96,7 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     await submitButton.click();
     
     // Verify checkout redirection
-    await page.waitForURL('**/#mock-checkout');
+    await page.waitForURL('**/?payment=mock_success&ref=MW-TEST-999');
   });
 
   test('should navigate to the admin login page', async ({ page }) => {
@@ -109,5 +109,56 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     // Check that email and password fields exist
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
+  });
+
+  test('should complete the full authenticated enquiry and checkout API flow without mocking', async ({ request }) => {
+    const uniqueEmail = `testuser_${Date.now()}@example.com`;
+    
+    // 1. Register a new user
+    const registerResponse = await request.post('http://localhost:8080/api/auth/register', {
+      data: {
+        name: 'Test Parent',
+        email: uniqueEmail,
+        password: 'Password123!',
+      }
+    });
+    expect(registerResponse.ok()).toBeTruthy();
+    const registerData = await registerResponse.json();
+    const token = registerData.data.token;
+    
+    // 2. Create an enquiry using the same email
+    const enquiryResponse = await request.post('http://localhost:8080/api/enquiry', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      data: {
+        name: 'Test Parent',
+        email: uniqueEmail,
+        phone: '9876543210',
+        childName: 'Test Kid',
+        childAge: 10,
+        workshopId: 'AI_ROBOTICS_SUMMER_2026',
+        batchId: 'BATCH_01',
+        message: 'Integration test',
+      }
+    });
+    expect(enquiryResponse.ok()).toBeTruthy();
+    const enquiryData = await enquiryResponse.json();
+    const enquiryId = enquiryData.data.enquiryId;
+    
+    // 3. Request a checkout session (must pass protect and email check)
+    const checkoutResponse = await request.post('http://localhost:8080/api/payment/create-checkout-session', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      data: {
+        enquiryId
+      }
+    });
+    expect(checkoutResponse.ok()).toBeTruthy();
+    const checkoutData = await checkoutResponse.json();
+    expect(checkoutData.success).toBe(true);
+    const validUrl = checkoutData.checkoutUrl.startsWith('https://checkout.stripe.com') || checkoutData.checkoutUrl.includes('payment=mock_success');
+    expect(validUrl).toBe(true);
   });
 });

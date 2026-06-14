@@ -40,9 +40,8 @@ export function UserLogin() {
       const result = await response.json();
       if (result.success && result.data?.user) {
         setUser(result.data.user);
+        navigate('/dashboard');
       }
-
-      navigate('/dashboard');
     } catch (err: unknown) {
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : 'Invalid credentials');
