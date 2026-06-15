@@ -111,3 +111,6 @@ Thumbs.db
 # Build artifacts
 apps/*/dist/
 packages/*/dist/
+
+# Local Agent Skills
+.agents/
