@@ -174,6 +174,25 @@ router.get('/', protect, restrictTo('admin'), async (_req: Request, res: Respons
   }
 });
 
+// @route   DELETE /api/enquiry/:id
+// @desc    Delete an enquiry/registration
+// @access  Admin
+router.delete('/:id', protect, restrictTo('admin'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const enquiry = await Enquiry.findByIdAndDelete(req.params.id);
+    if (!enquiry) {
+      return next(new AppError('Registration not found', 404, 'NOT_FOUND'));
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Registration deleted successfully',
+      data: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @route   GET /api/enquiry/user/me
 // @desc    Get all registrations / enquiries for the logged-in user
 // @access  Private

@@ -55,9 +55,26 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
 
     // Intercept API POST request to /api/enquiry
     await page.route('**/api/enquiry', async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Origin': 'http://localhost:5173',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Credentials': 'true',
+          }
+        });
+        return;
+      }
+      
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': 'http://localhost:5173',
+          'Access-Control-Allow-Credentials': 'true',
+        },
         body: JSON.stringify({
           success: true,
           message: 'Enquiry submitted successfully',
@@ -66,17 +83,36 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
       });
     });
 
-    // Intercept API POST request to /api/payment/create-checkout-session
     await page.route('**/api/payment/create-checkout-session', async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Origin': 'http://localhost:5173',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Credentials': 'true',
+          }
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': 'http://localhost:5173',
+          'Access-Control-Allow-Credentials': 'true',
+        },
         body: JSON.stringify({
           success: true,
           checkoutUrl: 'http://localhost:5173/?payment=mock_success&ref=MW-TEST-999',
         })
       });
     });
+
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
+    page.on('request', req => console.log('REQUEST:', req.url()));
 
     await page.goto('/');
     
@@ -90,6 +126,7 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
     await page.fill('input[name="phone"]', '9876543210');
     await page.fill('input[name="childName"]', 'Kid Name');
     await page.fill('input[name="childAge"]', '10');
+    await page.selectOption('select[name="batchId"]', 'b-1');
     
     // Submit form and verify the checkout API was called (proves the full
     // enquiry → payment flow executed). We listen for the checkout request
@@ -118,6 +155,13 @@ test.describe('MindWire Landing Page & Interactive Flows', () => {
   // in CI would pollute the live database with test data.
   test('should complete the full authenticated enquiry and checkout API flow without mocking', async ({ request }) => {
     test.skip(!!process.env.CI, 'Needs live API + database (only runs locally with npm run dev)');
+
+    // Dynamically skip if the local API server isn't running
+    try {
+      await request.get('http://127.0.0.1:8080/api/health', { timeout: 2000 });
+    } catch {
+      test.skip(true, 'Local API server (port 8080) is not running. Start the backend to run this integration test.');
+    }
 
     const uniqueEmail = `testuser_${Date.now()}@example.com`;
     

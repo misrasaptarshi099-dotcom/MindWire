@@ -20,7 +20,7 @@ export function Register({ workshop }: RegisterProps) {
   
   const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof enquirySchema>>({
     resolver: zodResolver(enquirySchema),
-    defaultValues: { hp: '', batchId: '' } as Partial<z.input<typeof enquirySchema>>
+    defaultValues: { hp: '' } as Partial<z.input<typeof enquirySchema>>
   });
 
   const onSubmit = async (data: z.input<typeof enquirySchema>) => {

@@ -25,8 +25,31 @@ const logger = winston.createLogger({
 import { app } from './app.js';
 import { connectDB } from './config/db.js';
 import { seedDefaultWorkshop } from './routes/workshop.js';
+import { User } from './models/User.js';
 
 const PORT = process.env.PORT || 8080;
+
+// Seed a default admin user if none exists
+const seedAdminUser = async () => {
+  const adminEmail = process.env.ADMIN_EMAIL && process.env.ADMIN_EMAIL !== 'your_personal_email@gmail.com'
+    ? process.env.ADMIN_EMAIL
+    : 'admin@kidrove.com';
+
+  const existingAdmin = await User.findOne({ role: 'admin' });
+  if (existingAdmin) {
+    logger.info(`Admin user already exists (${existingAdmin.email}).`);
+    return;
+  }
+
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
+  await User.create({
+    name: 'KiDrove Admin',
+    email: adminEmail,
+    password: adminPassword,
+    role: 'admin',
+  });
+  logger.info(`Default admin seeded — email: ${adminEmail} / password: ${adminPassword}`);
+};
 
 const startServer = async () => {
   // Connect to Database
@@ -38,6 +61,13 @@ const startServer = async () => {
     logger.info('Default workshop seeded/verified.');
   } catch (error) {
     logger.error(`Error seeding default workshop: ${(error as Error).message}`);
+  }
+
+  // Seed default admin user
+  try {
+    await seedAdminUser();
+  } catch (error) {
+    logger.error(`Error seeding admin user: ${(error as Error).message}`);
   }
 
   // Start listening
