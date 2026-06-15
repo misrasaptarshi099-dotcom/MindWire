@@ -36,19 +36,33 @@ export function Outcomes() {
           </ul>
         </div>
         <div className="relative">
+          {/* Subtle neon glow borders surrounding the outcomes image */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-secondary to-primary rounded-2xl blur opacity-20" />
+          
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="aspect-square rounded-2xl glass p-8 flex flex-col items-center justify-center text-center border-primary/20 relative overflow-hidden"
+            className="relative glass p-2 rounded-2xl border border-border/60 overflow-hidden shadow-2xl"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 opacity-50" />
-            <div className="z-10">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-background border-2 border-primary flex items-center justify-center">
-                <span className="font-mono text-2xl text-primary font-bold">M_W</span>
+            <img 
+              src="/robotics_outcomes.png" 
+              alt="Kids collaborating on robot" 
+              className="w-full h-auto object-cover rounded-xl aspect-[4/3] border border-border/20 hover:scale-[1.01] transition-transform duration-500"
+            />
+            
+            {/* Overlay Gradient for readability of floating card */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent pointer-events-none" />
+
+            {/* Floating certificate card inside the container */}
+            <div className="absolute bottom-4 left-4 right-4 glass border border-border/80 p-4 rounded-xl flex items-center gap-3 backdrop-blur-md">
+              <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <span className="font-mono text-xs font-bold">M_W</span>
               </div>
-              <h3 className="text-2xl font-bold mb-2">MindWire Certified</h3>
-              <p className="text-muted-foreground text-sm">Certificate of Completion awarded to all successful graduates.</p>
+              <div className="text-left">
+                <h3 className="text-sm font-bold text-glow">MindWire Certified</h3>
+                <p className="text-[10px] text-muted-foreground leading-tight">Certificate of Completion awarded to graduates.</p>
+              </div>
             </div>
           </motion.div>
         </div>
