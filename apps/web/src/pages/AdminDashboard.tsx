@@ -70,19 +70,13 @@ export function AdminDashboard() {
   const navigate = useNavigate();
 
   const fetchDashboardData = useCallback(async () => {
-    const token = sessionStorage.getItem('admin_token');
-    if (!token) {
-      navigate('/admin/login');
-      return;
-    }
-
     try {
       setLoading(true);
       const apiUrl = import.meta.env.VITE_API_URL || '/api';
 
       // 1. Fetch registrations
       const enqRes = await fetch(`${apiUrl}/enquiry`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       });
       if (!enqRes.ok) {
         const error = new Error('Failed to retrieve registration data.') as Error & { status?: number };
@@ -173,12 +167,11 @@ export function AdminDashboard() {
   const handleDeleteWorkshop = async (workshopId: string) => {
     if (!confirm('Are you sure you want to delete this workshop? This action cannot be undone.')) return;
     
-    const token = sessionStorage.getItem('admin_token');
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api';
       const res = await fetch(`${apiUrl}/workshop/${workshopId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       });
       if (res.ok) {
         fetchDashboardData();
@@ -203,7 +196,7 @@ export function AdminDashboard() {
       }
     }
 
-    const token = sessionStorage.getItem('admin_token');
+
     
     const payload = {
       workshopId: wsId,
@@ -231,9 +224,9 @@ export function AdminDashboard() {
       const res = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
 
