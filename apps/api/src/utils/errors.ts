@@ -35,13 +35,15 @@ export const handleError = (err: Error, res: Response) => {
     return;
   }
 
-  if (err instanceof AppError) {
-    logger.warn(`AppError [${err.errorCode}] (${err.statusCode}): ${err.message}`);
-    return res.status(err.statusCode).json({
+  const isAppError = err instanceof AppError || (err && typeof (err as any).statusCode === 'number' && typeof (err as any).errorCode === 'string');
+  if (isAppError) {
+    const appErr = err as any;
+    logger.warn(`AppError [${appErr.errorCode}] (${appErr.statusCode}): ${appErr.message}`);
+    return res.status(appErr.statusCode).json({
       success: false,
-      error: err.errorCode,
-      message: err.message,
-      details: err.details,
+      error: appErr.errorCode,
+      message: appErr.message,
+      details: appErr.details,
     });
   }
 

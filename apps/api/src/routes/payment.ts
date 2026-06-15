@@ -385,6 +385,11 @@ router.post('/webhook', async (req: Request, res: Response, next: NextFunction) 
   const sig = req.headers['stripe-signature'];
   const rawBody = (req as any).rawBody;
 
+  logger.info(`Stripe Webhook Request Received.`);
+  logger.info(`- Stripe Signature: ${sig ? String(sig).slice(0, 30) + '...' : 'NONE'}`);
+  logger.info(`- rawBody length: ${rawBody ? rawBody.length : 'undefined/null'}`);
+  logger.info(`- stripeWebhookSecret: ${stripeWebhookSecret ? `defined (len: ${stripeWebhookSecret.length}, prefix: ${stripeWebhookSecret.slice(0, 8)}, suffix: ${stripeWebhookSecret.slice(-4)})` : 'undefined'}`);
+
   if (!stripe || !stripeWebhookSecret || !sig || !rawBody) {
     logger.warn('Stripe Webhook: Stripe config missing or signature verification skipped.');
     return res.status(200).json({ received: true, status: 'skipped_or_mocked' });
