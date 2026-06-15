@@ -39,6 +39,13 @@ export function AdminLogin() {
 
       const result = await response.json();
       if (result.success && result.data?.user) {
+        if (result.data.user.role !== 'admin') {
+          throw new Error('Access denied. Admin privileges required.');
+        }
+        // Store token so ProtectedRoute can verify access
+        if (result.data.token) {
+          sessionStorage.setItem('admin_token', result.data.token);
+        }
         setUser(result.data.user);
         navigate('/admin/dashboard');
       } else {

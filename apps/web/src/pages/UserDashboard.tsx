@@ -314,28 +314,39 @@ export function UserDashboard() {
                       Certificate
                     </button>
                   ) : reg.status === 'pending' || reg.status === 'payment_initiated' ? (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const apiUrl = import.meta.env.VITE_API_URL || '/api';
-                          const res = await fetch(`${apiUrl}/payment/create-checkout-session`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            credentials: 'include',
-                            body: JSON.stringify({ enquiryId: reg.enquiryId })
-                          });
-                          if (res.ok) {
-                            const data = await res.json();
-                            if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+                    <div className="w-full flex flex-col gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const apiUrl = import.meta.env.VITE_API_URL || '/api';
+                            const res = await fetch(`${apiUrl}/payment/create-checkout-session`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ enquiryId: reg.enquiryId })
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+                            }
+                          } catch (err) {
+                            console.error(err);
                           }
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      className="w-full py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/95 transition-all text-center"
-                    >
-                      Pay ₹{reg.workshopFee.toLocaleString()}
-                    </button>
+                        }}
+                        className={`w-full py-3 font-semibold rounded-lg transition-all text-center ${
+                          reg.status === 'payment_initiated' 
+                            ? 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-yellow-950 border border-yellow-500/30' 
+                            : 'bg-primary text-primary-foreground hover:bg-primary/95'
+                        }`}
+                      >
+                        {reg.status === 'payment_initiated' ? 'Resume Payment' : `Pay ₹${reg.workshopFee.toLocaleString()}`}
+                      </button>
+                      {reg.status === 'payment_initiated' && (
+                        <span className="text-[10px] text-muted-foreground text-center font-mono">
+                          Awaiting confirmation.
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="text-xs text-muted-foreground text-center py-2 font-mono">No action available</div>
                   )}

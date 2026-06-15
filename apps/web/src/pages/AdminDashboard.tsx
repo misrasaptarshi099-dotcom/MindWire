@@ -109,10 +109,13 @@ export function AdminDashboard() {
       const usersRes = await fetch(`${apiUrl}/users`, {
         credentials: 'include'
       });
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData.data || []);
+      if (!usersRes.ok) {
+        const error = new Error('Failed to retrieve users data.') as Error & { status?: number };
+        error.status = usersRes.status;
+        throw error;
       }
+      const usersData = await usersRes.json();
+      setUsers(usersData.data || []);
 
       setError('');
     } catch (err: unknown) {
@@ -196,6 +199,27 @@ export function AdminDashboard() {
       } else {
         const errData = await res.json();
         alert(errData.message || 'Failed to delete workshop.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error during deletion.');
+    }
+  };
+
+  const handleDeleteEnquiry = async (enquiryId: string) => {
+    if (!confirm('Are you sure you want to delete this registration/enquiry? This action cannot be undone.')) return;
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      const res = await fetch(`${apiUrl}/enquiry/${enquiryId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        fetchDashboardData();
+      } else {
+        const errData = await res.json();
+        alert(errData.message || 'Failed to delete registration.');
       }
     } catch (err) {
       console.error(err);
@@ -379,6 +403,7 @@ export function AdminDashboard() {
                     <th className="px-6 py-4 font-medium">Workshop & Batch</th>
                     <th className="px-6 py-4 font-medium">Status</th>
                     <th className="px-6 py-4 font-medium">Date</th>
+                    <th className="px-6 py-4 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -403,6 +428,15 @@ export function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4 text-muted-foreground text-xs">
                         {new Date(enq.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleDeleteEnquiry(enq._id)}
+                          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                          title="Delete Registration"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -491,6 +525,62 @@ export function AdminDashboard() {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'users' && (
+          <motion.div
+            key="users"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-6"
+          >
+            <div className="glass rounded-xl overflow-hidden border border-border">
+              {users.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">No users found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-primary/5 border-b border-border text-sm">
+                        <th className="p-4 font-semibold">User</th>
+                        <th className="p-4 font-semibold">Role</th>
+                        <th className="p-4 font-semibold">Joined At</th>
+                        <th className="p-4 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {users.map(user => (
+                        <tr key={user._id} className="hover:bg-primary/5 transition-colors">
+                          <td className="p-4">
+                            <div className="font-medium text-glow">{user.name}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                          </td>
+                          <td className="p-4">
+                            <span className="px-3 py-1 bg-primary/20 text-primary text-xs rounded-full uppercase tracking-wider font-semibold border border-primary/30">
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="p-4">
+                            <button
+                              onClick={() => handleDeleteUser(user._id)}
+                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </main>
 
@@ -676,61 +766,7 @@ export function AdminDashboard() {
             </motion.div>
           </div>
         )}
-        {activeTab === 'users' && (
-          <motion.div
-            key="users"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-6"
-          >
-            <div className="glass rounded-xl overflow-hidden border border-border">
-              {users.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">No users found.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-primary/5 border-b border-border text-sm">
-                        <th className="p-4 font-semibold">User</th>
-                        <th className="p-4 font-semibold">Role</th>
-                        <th className="p-4 font-semibold">Joined At</th>
-                        <th className="p-4 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {users.map(user => (
-                        <tr key={user._id} className="hover:bg-primary/5 transition-colors">
-                          <td className="p-4">
-                            <div className="font-medium text-glow">{user.name}</div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
-                          </td>
-                          <td className="p-4">
-                            <span className="px-3 py-1 bg-primary/20 text-primary text-xs rounded-full uppercase tracking-wider font-semibold border border-primary/30">
-                              {user.role}
-                            </span>
-                          </td>
-                          <td className="p-4 text-sm text-muted-foreground">
-                            {new Date(user.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="p-4">
-                            <button
-                              onClick={() => handleDeleteUser(user._id)}
-                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
-                              title="Delete User"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
+
       </AnimatePresence>
     </div>
   );
