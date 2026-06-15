@@ -99,14 +99,6 @@ npm run dev
 * **Frontend:** `http://localhost:5173` (or `http://localhost:5174` if port 5173 is in use)
 * **Backend API:** `http://localhost:8080`
 
-### 4. Seed Workshop Database
-Initialize the database with the default AI & Robotics Workshop configuration and administrative setups:
-```bash
-curl -X POST http://localhost:8080/api/workshop/seed
-```
-* **Default Admin Credentials:**
-  * **Email:** `admin@kidrove.com`
-  * **Password:** `Admin@123`
 
 ---
 
