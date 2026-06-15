@@ -224,6 +224,7 @@ router.get('/user/me', protect, async (req: Request, res: Response, next: NextFu
           batchId: enq.batchId,
           createdAt: enq.createdAt,
           enrolledAt: enq.enrolledAt,
+          review: enq.review,
           workshopTitle: workshop?.title || 'MindWire Workshop',
           workshopFee: workshop?.feeINR || 2999,
           workshopMode: workshop?.mode || 'hybrid',
@@ -235,6 +236,92 @@ router.get('/user/me', protect, async (req: Request, res: Response, next: NextFu
     res.status(200).json({
       success: true,
       data: enrichedEnquiries,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/enquiry/reviews
+// @desc    Get all public reviews for enrolled workshops
+// @access  Public
+router.get('/reviews', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const enquiries = await Enquiry.find({
+      status: 'enrolled',
+      'review.rating': { $exists: true, $ne: null }
+    })
+      .sort({ 'review.submittedAt': -1 })
+      .limit(20);
+
+    const workshopIds = Array.from(new Set(enquiries.map(enq => enq.workshopId).filter(Boolean)));
+    const workshops = await Workshop.find({ workshopId: { $in: workshopIds } });
+    const workshopMap = new Map(workshops.map(w => [w.workshopId, w]));
+
+    const reviews = enquiries.map((enq) => {
+      const workshop = workshopMap.get(enq.workshopId);
+      return {
+        rating: enq.review?.rating,
+        comment: enq.review?.comment,
+        submittedAt: enq.review?.submittedAt,
+        workshopTitle: workshop?.title || 'MindWire Workshop',
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: reviews,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/enquiry/:enquiryId/review
+// @desc    Submit or update a rating/review for an enrolled workshop
+// @access  Private
+router.post('/:enquiryId/review', protect, async (req: Request, res: Response, next: NextFunction) => {
+  const { enquiryId } = req.params;
+  const { rating, comment } = req.body;
+
+  const parsedRating = Number(rating);
+  if (isNaN(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+    return next(new AppError('Rating must be a number between 1 and 5.', 400, 'VALIDATION_ERROR'));
+  }
+
+  if (comment && comment.length > 500) {
+    return next(new AppError('Comment must not exceed 500 characters.', 400, 'VALIDATION_ERROR'));
+  }
+
+  try {
+    const enquiry = await Enquiry.findOne({ enquiryId });
+    if (!enquiry) {
+      return next(new AppError('Enquiry not found.', 404, 'NOT_FOUND'));
+    }
+
+    // Authorization check: Must be the user's own enquiry
+    if (enquiry.email !== req.user?.email) {
+      return next(new AppError('Not authorized to review this registration.', 403, 'FORBIDDEN'));
+    }
+
+    // Eligibility check: Must be enrolled to submit a review
+    if (enquiry.status !== 'enrolled') {
+      return next(new AppError('Only enrolled students can submit reviews.', 400, 'INELIGIBLE'));
+    }
+
+    // Save/update review
+    enquiry.review = {
+      rating: parsedRating,
+      comment: comment || '',
+      submittedAt: new Date(),
+    };
+
+    await enquiry.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Review submitted successfully.',
+      data: enquiry.review,
     });
   } catch (error) {
     next(error);

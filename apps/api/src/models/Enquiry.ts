@@ -28,6 +28,11 @@ export interface IEnquiry extends Document {
   createdAt: Date;
   updatedAt: Date;
   enrolledAt?: Date;
+  review?: {
+    rating: number;
+    comment: string;
+    submittedAt: Date;
+  };
 }
 
 const enquirySchema = new Schema<IEnquiry>(
@@ -123,6 +128,11 @@ const enquirySchema = new Schema<IEnquiry>(
     },
     enrolledAt: {
       type: Date,
+    },
+    review: {
+      rating: { type: Number, min: 1, max: 5 },
+      comment: { type: String, maxlength: 500 },
+      submittedAt: { type: Date }
     },
   },
   {
