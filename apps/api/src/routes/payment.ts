@@ -401,6 +401,20 @@ router.post('/webhook', async (req: Request, res: Response, next: NextFunction) 
 
   try {
     switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const enquiryId = session.metadata?.enquiryId;
+        const paymentIntentId = typeof session.payment_intent === 'string' 
+          ? session.payment_intent 
+          : session.payment_intent?.id || session.id;
+        if (enquiryId) {
+          logger.info(`Webhook: Checkout completed for enquiry ${enquiryId}`);
+          await confirmEnrollment(enquiryId, paymentIntentId);
+        } else {
+          logger.warn(`Webhook: checkout.session.completed missing enquiryId in metadata`);
+        }
+        break;
+      }
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const enquiryId = paymentIntent.metadata.enquiryId;
