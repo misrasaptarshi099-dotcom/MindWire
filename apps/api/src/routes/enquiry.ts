@@ -250,22 +250,23 @@ router.get('/reviews', async (req: Request, res: Response, next: NextFunction) =
     const enquiries = await Enquiry.find({
       status: 'enrolled',
       'review.rating': { $exists: true, $ne: null }
-    }).sort({ 'review.submittedAt': -1 });
+    })
+      .sort({ 'review.submittedAt': -1 })
+      .limit(20);
 
-    const reviews = await Promise.all(
-      enquiries.map(async (enq) => {
-        const workshop = await Workshop.findOne({ workshopId: enq.workshopId });
-        return {
-          name: enq.name,
-          childName: enq.childName,
-          childAge: enq.childAge,
-          rating: enq.review?.rating,
-          comment: enq.review?.comment,
-          submittedAt: enq.review?.submittedAt,
-          workshopTitle: workshop?.title || 'MindWire Workshop',
-        };
-      })
-    );
+    const workshopIds = Array.from(new Set(enquiries.map(enq => enq.workshopId).filter(Boolean)));
+    const workshops = await Workshop.find({ workshopId: { $in: workshopIds } });
+    const workshopMap = new Map(workshops.map(w => [w.workshopId, w]));
+
+    const reviews = enquiries.map((enq) => {
+      const workshop = workshopMap.get(enq.workshopId);
+      return {
+        rating: enq.review?.rating,
+        comment: enq.review?.comment,
+        submittedAt: enq.review?.submittedAt,
+        workshopTitle: workshop?.title || 'MindWire Workshop',
+      };
+    });
 
     res.status(200).json({
       success: true,

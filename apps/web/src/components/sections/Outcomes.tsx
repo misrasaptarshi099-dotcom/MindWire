@@ -48,6 +48,8 @@ export function Outcomes() {
             <img 
               src="/robotics_outcomes.png" 
               alt="Kids collaborating on robot" 
+              loading="lazy"
+              decoding="async"
               className="w-full h-auto object-cover rounded-xl aspect-[4/3] border border-border/20 hover:scale-[1.01] transition-transform duration-500"
             />
             

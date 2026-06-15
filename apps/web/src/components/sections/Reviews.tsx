@@ -3,12 +3,12 @@ import { motion } from 'framer-motion';
 import { Star, MessageSquare } from 'lucide-react';
 
 interface Review {
-  name: string;
+  name?: string;
   childName?: string;
   childAge?: number;
   rating: number;
   comment: string;
-  submittedAt: string;
+  submittedAt?: string;
   workshopTitle: string;
 }
 
@@ -34,8 +34,11 @@ export function Reviews() {
     fetchReviews();
   }, []);
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-IN', {
       month: 'long',
       year: 'numeric',
     });
@@ -123,7 +126,7 @@ export function Reviews() {
 
                 {/* Reviewer Meta */}
                 <div className="border-t border-border/30 pt-4 flex flex-col">
-                  <span className="font-bold text-sm text-glow">{rev.name}</span>
+                  <span className="font-bold text-sm text-glow">{rev.name || 'Verified Parent'}</span>
                   {rev.childName && (
                     <span className="text-xs text-muted-foreground font-mono mt-0.5">
                       Parent of {rev.childName} (Age {rev.childAge || 'N/A'})
@@ -132,9 +135,11 @@ export function Reviews() {
                   <span className="text-[10px] text-primary/70 font-mono mt-2 uppercase tracking-wider">
                     {rev.workshopTitle}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60 font-mono mt-1">
-                    {formatDate(rev.submittedAt)}
-                  </span>
+                  {rev.submittedAt && formatDate(rev.submittedAt) && (
+                    <span className="text-[10px] text-muted-foreground/60 font-mono mt-1">
+                      {formatDate(rev.submittedAt)}
+                    </span>
+                  )}
                 </div>
               </motion.div>
             ))}

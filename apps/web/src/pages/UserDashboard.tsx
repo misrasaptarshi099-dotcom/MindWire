@@ -94,9 +94,10 @@ export function UserDashboard() {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.message || 'Failed to submit review.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setReviewError(err.message || 'Something went wrong.');
+      const message = err instanceof Error ? err.message : 'Something went wrong.';
+      setReviewError(message);
     } finally {
       setSubmittingReview(false);
     }
