@@ -8,6 +8,7 @@ import authRouter from './routes/auth.js';
 import enquiryRouter from './routes/enquiry.js';
 import paymentRouter from './routes/payment.js';
 import workshopRouter from './routes/workshop.js';
+import userRouter from './routes/user.js';
 
 // Setup logger
 const logger = winston.createLogger({
@@ -80,6 +81,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/enquiry', enquiryRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/workshop', workshopRouter);
+app.use('/api/users', userRouter);
 
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response) => {

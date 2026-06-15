@@ -50,12 +50,6 @@ export function UserDashboard() {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      const isLoggedIn = document.cookie.split(';').some(item => item.trim().startsWith('user_logged_in='));
-      if (!isLoggedIn) {
-        navigate('/login');
-        return;
-      }
-
       try {
         const apiUrl = import.meta.env.VITE_API_URL || '/api';
         

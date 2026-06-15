@@ -43,10 +43,19 @@ interface Workshop {
   batches: Batch[];
 }
 
+interface UserData {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
 export function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'registrations' | 'workshops'>('registrations');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'workshops' | 'users'>('registrations');
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -95,6 +104,15 @@ export function AdminDashboard() {
       }
       const wsData = await wsRes.json();
       setWorkshops(wsData.data || []);
+
+      // 3. Fetch users
+      const usersRes = await fetch(`${apiUrl}/users`, {
+        credentials: 'include'
+      });
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setUsers(usersData.data || []);
+      }
 
       setError('');
     } catch (err: unknown) {
@@ -178,6 +196,27 @@ export function AdminDashboard() {
       } else {
         const errData = await res.json();
         alert(errData.message || 'Failed to delete workshop.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error during deletion.');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      const res = await fetch(`${apiUrl}/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        fetchDashboardData();
+      } else {
+        const errData = await res.json();
+        alert(errData.message || 'Failed to delete user.');
       }
     } catch (err) {
       console.error(err);
@@ -313,6 +352,14 @@ export function AdminDashboard() {
             }`}
           >
             <Settings className="w-4 h-4" /> Workshops CMS
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`pb-4 text-sm font-semibold tracking-wide flex items-center gap-2 border-b-2 transition-all ${
+              activeTab === 'users' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Users className="w-4 h-4" /> Registered Users
           </button>
         </div>
 
@@ -628,6 +675,61 @@ export function AdminDashboard() {
               </form>
             </motion.div>
           </div>
+        )}
+        {activeTab === 'users' && (
+          <motion.div
+            key="users"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-6"
+          >
+            <div className="glass rounded-xl overflow-hidden border border-border">
+              {users.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">No users found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-primary/5 border-b border-border text-sm">
+                        <th className="p-4 font-semibold">User</th>
+                        <th className="p-4 font-semibold">Role</th>
+                        <th className="p-4 font-semibold">Joined At</th>
+                        <th className="p-4 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {users.map(user => (
+                        <tr key={user._id} className="hover:bg-primary/5 transition-colors">
+                          <td className="p-4">
+                            <div className="font-medium text-glow">{user.name}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                          </td>
+                          <td className="p-4">
+                            <span className="px-3 py-1 bg-primary/20 text-primary text-xs rounded-full uppercase tracking-wider font-semibold border border-primary/30">
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="p-4">
+                            <button
+                              onClick={() => handleDeleteUser(user._id)}
+                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
