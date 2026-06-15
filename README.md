@@ -120,6 +120,5 @@ npm run build
 
 ## 🔒 Security & Privacy Practices
 
-* **No Committed Secrets:** All environment files (`.env`, `.env.local`) are ignored by Git. No database URIs, API tokens, or secrets exist in the repository history.
 * **Child Privacy Protection:** Public endpoints omit names and ages of registered minors.
 * **Honeypot Shielding:** The checkout and registration endpoints are protected with honeypot parameters to intercept bot scripts without adding UI friction.
