@@ -49,6 +49,7 @@ export function Register({ workshop }: RegisterProps) {
       const response = await fetch(apiUrl + '/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
       
@@ -66,6 +67,7 @@ export function Register({ workshop }: RegisterProps) {
         const checkoutResponse = await fetch(apiUrl + '/payment/create-checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ enquiryId }),
         });
 
