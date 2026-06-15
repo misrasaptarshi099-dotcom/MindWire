@@ -179,10 +179,34 @@ router.get('/', protect, restrictTo('admin'), async (_req: Request, res: Respons
 // @access  Admin
 router.delete('/:id', protect, restrictTo('admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const enquiry = await Enquiry.findByIdAndDelete(req.params.id);
+    const enquiry = await Enquiry.findById(req.params.id);
     if (!enquiry) {
       return next(new AppError('Registration not found', 404, 'NOT_FOUND'));
     }
+
+    if (enquiry.status === 'enrolled') {
+      const workshop = await Workshop.findOneAndUpdate(
+        { workshopId: enquiry.workshopId },
+        { 
+          $inc: { 
+            seatsAvailable: 1, 
+            'batches.$[b].enrolled': -1 
+          } 
+        },
+        {
+          arrayFilters: [{ 'b.batchId': enquiry.batchId }],
+          new: true
+        }
+      );
+      if (workshop) {
+        const redis = getRedisClient();
+        await redis.set('workshop:seats', String(workshop.seatsAvailable), 'EX', 60);
+        await redis.del('workshop:info');
+      }
+    }
+
+    await Enquiry.findByIdAndDelete(req.params.id);
+
     res.status(200).json({
       success: true,
       message: 'Registration deleted successfully',

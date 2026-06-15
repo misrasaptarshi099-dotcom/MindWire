@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { User } from '../models/User.js';
 import { Enquiry } from '../models/Enquiry.js';
+import { Workshop } from '../models/Workshop.js';
+import { getRedisClient } from '../config/redis.js';
 import { AppError } from '../utils/errors.js';
 import { protect, restrictTo } from '../middlewares/auth.js';
 
@@ -31,7 +33,7 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
 // @access  Admin
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findOneAndDelete({
+    const user = await User.findOne({
       _id: req.params.id,
       role: { $ne: 'admin' },
     });
@@ -45,7 +47,31 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
       return next(new AppError('User not found', 404, 'NOT_FOUND'));
     }
 
-    // Cascade delete associated enquiries
+    // Find enrolled enquiries to restore seats
+    const enrolledEnquiries = await Enquiry.find({ email: user.email, status: 'enrolled' });
+    for (const enq of enrolledEnquiries) {
+      const workshop = await Workshop.findOneAndUpdate(
+        { workshopId: enq.workshopId },
+        { 
+          $inc: { 
+            seatsAvailable: 1, 
+            'batches.$[b].enrolled': -1 
+          } 
+        },
+        {
+          arrayFilters: [{ 'b.batchId': enq.batchId }],
+          new: true
+        }
+      );
+      if (workshop) {
+        const redis = getRedisClient();
+        await redis.set('workshop:seats', String(workshop.seatsAvailable), 'EX', 60);
+        await redis.del('workshop:info');
+      }
+    }
+
+    // Delete the user and cascade delete associated enquiries
+    await User.findByIdAndDelete(user._id);
     await Enquiry.deleteMany({ email: user.email });
 
     res.status(200).json({

@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Workshop } from '../models/Workshop.js';
+import { Enquiry } from '../models/Enquiry.js';
 import { getRedisClient } from '../config/redis.js';
 import { AppError } from '../utils/errors.js';
 import { protect, restrictTo } from '../middlewares/auth.js';
@@ -26,7 +27,7 @@ const router = Router();
 // Helper to seed default workshop data
 export const seedDefaultWorkshop = async () => {
   logger.info('Ensuring default workshop data exists in MongoDB...');
-  return await Workshop.findOneAndUpdate(
+  await Workshop.findOneAndUpdate(
     { workshopId: 'AI_ROBOTICS_SUMMER_2026' },
     {
       $setOnInsert: {
@@ -59,6 +60,39 @@ export const seedDefaultWorkshop = async () => {
     },
     { upsert: true, new: true }
   );
+
+  const workshop = await Workshop.findOne({ workshopId: 'AI_ROBOTICS_SUMMER_2026' });
+  if (!workshop) {
+    throw new Error('Failed to find or seed the default workshop AI_ROBOTICS_SUMMER_2026');
+  }
+
+  const enrolledB1 = await Enquiry.countDocuments({
+    workshopId: 'AI_ROBOTICS_SUMMER_2026',
+    batchId: 'BATCH_01',
+    status: 'enrolled'
+  });
+  const enrolledB2 = await Enquiry.countDocuments({
+    workshopId: 'AI_ROBOTICS_SUMMER_2026',
+    batchId: 'BATCH_02',
+    status: 'enrolled'
+  });
+
+  workshop.batches = workshop.batches.map(b => {
+    if (b.batchId === 'BATCH_01') b.enrolled = enrolledB1;
+    if (b.batchId === 'BATCH_02') b.enrolled = enrolledB2;
+    return b;
+  });
+
+  const totalEnrolled = enrolledB1 + enrolledB2;
+  workshop.seatsAvailable = Math.max(0, workshop.seatsTotal - totalEnrolled);
+  await workshop.save();
+
+  const redis = getRedisClient();
+  await redis.set('workshop:seats', String(workshop.seatsAvailable), 'EX', 60);
+  await redis.del('workshop:info');
+
+  logger.info(`Workshop seats synchronized. B1 enrolled: ${enrolledB1}, B2 enrolled: ${enrolledB2}, Available: ${workshop.seatsAvailable}`);
+  return workshop;
 };
 
 // @route   POST /api/workshop/seed
